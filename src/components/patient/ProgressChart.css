@@ -1,0 +1,12 @@
+.progress-chart {
+  margin-bottom: 20px;
+}
+
+.progress-chart h3 {
+  margin-bottom: 15px;
+}
+
+.chart-container {
+  height: 300px;
+  position: relative;
+}

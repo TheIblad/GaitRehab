@@ -1,0 +1,108 @@
+.calendar-heatmap {
+  margin-bottom: 20px;
+}
+
+.calendar-heatmap h3 {
+  margin-bottom: 15px;
+}
+
+.heatmap-days-header {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  text-align: center;
+  font-size: 12px;
+  color: #64748b;
+  margin-bottom: 5px;
+  font-weight: 500;
+}
+
+.heatmap-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.day-cell {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  border-radius: 4px;
+  cursor: default; /* Change cursor */
+  border: 1px solid transparent; /* Add border for consistency */
+}
+
+.day-cell.empty {
+  background-color: transparent; /* Make empty cells invisible */
+  border: none;
+}
+
+.day-cell.level-0 {
+  background-color: #f1f5f9;
+  color: #64748b;
+}
+
+.day-cell.level-1 {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.day-cell.level-2 {
+  background-color: #93c5fd;
+  color: #1e3a8a;
+}
+
+.day-cell.level-3 {
+  background-color: #60a5fa;
+  color: #ffffff;
+}
+
+.day-cell.level-4 {
+  background-color: #2563eb;
+  color: #ffffff;
+}
+
+.heatmap-legend {
+  display: flex;
+  justify-content: center; /* Center legend items */
+  align-items: center; /* Align items vertically */
+  margin-top: 15px;
+  gap: 5px; /* Adjust gap */
+  font-size: 12px;
+  color: #64748b;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+}
+
+.legend-color {
+  width: 15px;
+  height: 15px;
+  border-radius: 3px; /* Slightly less rounded */
+  border: 1px solid rgba(0, 0, 0, 0.1); /* Add subtle border */
+}
+
+.legend-color.level-0 {
+  background-color: #f1f5f9;
+}
+
+.legend-color.level-1 {
+  background-color: #dbeafe;
+}
+
+.legend-color.level-2 {
+  background-color: #93c5fd;
+}
+
+.legend-color.level-3 {
+  background-color: #60a5fa;
+}
+
+.legend-color.level-4 {
+  background-color: #2563eb;
+}
