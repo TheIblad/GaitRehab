@@ -82,7 +82,6 @@ function TherapistHome() {
       <div className="patients-section">
         <PatientList 
           patients={patients} 
-          onMessage={handleMessagePatient} 
           onPatientAdded={loadData}
         />
       </div>

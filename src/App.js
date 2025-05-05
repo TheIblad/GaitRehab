@@ -14,6 +14,7 @@ import TherapistHome from './pages/TherapistHome';
 import Messages from './pages/Messages';
 import Settings from './pages/Settings';
 import Progress from './pages/Progress';
+import Contacts from './pages/Contacts';
 
 // Import Global Styles
 import './index.css';
@@ -232,6 +233,11 @@ function AppContent() {
                   </Link>
                 </li>
                 <li>
+                  <Link to="/contacts" onClick={() => setMenuOpen(false)}>
+                    Contacts
+                  </Link>
+                </li>
+                <li>
                   <Link to="/settings" onClick={() => setMenuOpen(false)}>
                     Settings
                   </Link>
@@ -299,6 +305,10 @@ function AppContent() {
           <Route
             path="/messages"
             element={user ? <Messages /> : <Navigate to="/login" />}
+          />
+          <Route
+            path="/contacts"
+            element={user ? <Contacts /> : <Navigate to="/login" />}
           />
           <Route
             path="/settings"

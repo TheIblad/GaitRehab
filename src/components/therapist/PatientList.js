@@ -3,10 +3,12 @@ import './PatientList.css';
 import Button from '../common/Button';
 import AddPatientModal from './AddPatientModal';
 import { useAuth } from '../../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
-function PatientList({ patients = [], onMessage, onPatientAdded }) {
+function PatientList({ patients = [], onPatientAdded }) {
   const { user } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const navigate = useNavigate();
   
   const handleOpenModal = () => {
     setIsModalOpen(true);
@@ -21,6 +23,10 @@ function PatientList({ patients = [], onMessage, onPatientAdded }) {
     if (onPatientAdded) {
       onPatientAdded();
     }
+  };
+
+  const handleMessagePatient = (patientId) => {
+    navigate(`/messages?user=${patientId}`);
   };
 
   return (
@@ -62,7 +68,7 @@ function PatientList({ patients = [], onMessage, onPatientAdded }) {
                 <Button variant="secondary" onClick={() => window.location.href = `/patient-details?id=${patient.id}`}>
                   View
                 </Button>
-                <Button variant="ghost" onClick={() => onMessage(patient.id)}>
+                <Button variant="ghost" onClick={() => handleMessagePatient(patient.id)}>
                   Message
                 </Button>
               </div>

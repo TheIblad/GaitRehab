@@ -1,10 +1,21 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { fetchUserData } from '../utils/firestoreQueries';
 import './Home.css';
 
 function Home() {
   const { user } = useAuth();
+  const [userData, setUserData] = useState(null);
+  
+  useEffect(() => {
+    if (user) {
+      fetchUserData(user.uid).then(data => setUserData(data));
+    }
+  }, [user]);
+
+  // Get the correct dashboard link based on user role
+  const dashboardLink = userData?.role === 'therapist' ? '/therapist' : '/patient';
 
   return (
     <div>
@@ -22,7 +33,7 @@ function Home() {
           </div>
         )}
         {user && (
-          <Link to={user ? '/dashboard' : '/login'}>
+          <Link to={dashboardLink}>
             <button className="cta-btn">Go to Dashboard</button>
           </Link>
         )}

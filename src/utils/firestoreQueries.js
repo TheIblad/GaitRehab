@@ -4,18 +4,28 @@ import {
   where, 
   getDocs, 
   doc, 
-  getDoc
+  getDoc,
+  orderBy
 } from "firebase/firestore";
 import { db } from "../firebase/config";
 
-// Update fetchUserData to include more debugging
+// Update fetchUserData to include more debugging and handle name fields better
 export async function fetchUserData(userId) {
   try {
     const userDoc = doc(db, "users", userId);
     const userSnapshot = await getDoc(userDoc);
 
     if (userSnapshot.exists()) {
-      const userData = { id: userSnapshot.id, ...userSnapshot.data() };
+      const data = userSnapshot.data();
+      
+      // Make sure we have a displayName - check various possible fields
+      const userData = { 
+        id: userSnapshot.id, 
+        ...data,
+        // Ensure displayName exists by checking various possible name fields
+        displayName: data.displayName || data.fullName || data.name || data.username || `User ${userId.substr(0, 4)}`
+      };
+      
       console.log("Fetched user data for ID", userId, ":", userData);
       return userData;
     } else {
@@ -88,6 +98,32 @@ export async function fetchTherapistPatients(therapistId) {
     return patients;
   } catch (error) {
     console.error("Error fetching therapist patients:", error);
+    return [];
+  }
+}
+
+// Fetch messages between two users
+export async function fetchMessages(userId, partnerId) {
+  try {
+    const conversationId = [userId, partnerId].sort().join('_');
+    
+    const messagesQuery = query(
+      collection(db, "messages"),
+      where("conversationId", "==", conversationId),
+      orderBy("timestamp", "asc")
+    );
+    
+    const querySnapshot = await getDocs(messagesQuery);
+    
+    const messages = [];
+    querySnapshot.forEach((doc) => {
+      messages.push({ id: doc.id, ...doc.data() });
+    });
+    
+    console.log(`Fetched ${messages.length} messages for conversation ${conversationId}`);
+    return messages;
+  } catch (error) {
+    console.error("Error fetching messages:", error);
     return [];
   }
 }
