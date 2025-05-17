@@ -15,6 +15,7 @@ import Messages from './pages/Messages';
 import Settings from './pages/Settings';
 import Progress from './pages/Progress';
 import Contacts from './pages/Contacts';
+import PatientDetails from './pages/PatientDetails';
 
 // Import Global Styles
 import './index.css';
@@ -300,6 +301,10 @@ function AppContent() {
              path="/progress"
              element={<RoleBasedRoute element={<Progress />} requiredRole="therapist" />}
            />
+          <Route
+            path="/patient-details"
+            element={user ? <PatientDetails /> : <Navigate to="/login" />}
+          />
 
           {/* General Authenticated Routes */}
           <Route

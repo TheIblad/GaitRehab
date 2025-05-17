@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import Button from '../common/Button';
 import { db, auth } from '../../firebase/config';
-import { collection, doc, setDoc, serverTimestamp, updateDoc, query, where, getDocs } from 'firebase/firestore';
+import { collection, doc, setDoc, serverTimestamp, updateDoc, arrayUnion } from 'firebase/firestore';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import '../patient/ActivityModal.css'; // Reuse the same modal styles
+import './AddPatientModal.css'; // Use the dedicated CSS file
 
 function AddPatientModal({ isOpen, onClose, onPatientAdded, therapistId }) {
   const [loading, setLoading] = useState(false);
@@ -62,7 +62,7 @@ function AddPatientModal({ isOpen, onClose, onPatientAdded, therapistId }) {
       // 4. Also add this patient to the therapist's patients list
       const therapistRef = doc(db, 'users', therapistId);
       await updateDoc(therapistRef, {
-        patients: [...(therapistRef.patients || []), user.uid]
+        patients: arrayUnion(user.uid)
       });
       
       // Success, call the callback
@@ -81,21 +81,21 @@ function AddPatientModal({ isOpen, onClose, onPatientAdded, therapistId }) {
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay">
-      <div className="activity-modal">
-        <div className="modal-header">
+    <div className="add-patient-modal-overlay">
+      <div className="add-patient-modal">
+        <div className="add-patient-modal-header">
           <h3>Add New Patient</h3>
-          <button className="close-button" onClick={onClose}>×</button>
+          <button className="add-patient-close-button" onClick={onClose}>×</button>
         </div>
         
         {error && (
-          <div className="error-message" style={{ margin: '1rem 1.5rem 0', padding: '0.5rem' }}>
+          <div className="add-patient-error-message">
             {error}
           </div>
         )}
         
         <form onSubmit={handleSubmit}>
-          <div className="form-group">
+          <div className="add-patient-form-group">
             <label htmlFor="displayName">Full Name</label>
             <input
               type="text"
@@ -104,11 +104,12 @@ function AddPatientModal({ isOpen, onClose, onPatientAdded, therapistId }) {
               value={patientData.displayName}
               onChange={handleChange}
               required
+              placeholder="Enter patient's full name"
             />
           </div>
           
-          <div className="form-row">
-            <div className="form-group">
+          <div className="add-patient-form-row">
+            <div className="add-patient-form-group">
               <label htmlFor="email">Email</label>
               <input
                 type="email"
@@ -117,9 +118,10 @@ function AddPatientModal({ isOpen, onClose, onPatientAdded, therapistId }) {
                 value={patientData.email}
                 onChange={handleChange}
                 required
+                placeholder="Enter patient's email"
               />
             </div>
-            <div className="form-group">
+            <div className="add-patient-form-group">
               <label htmlFor="password">Temporary Password</label>
               <input
                 type="password"
@@ -129,11 +131,12 @@ function AddPatientModal({ isOpen, onClose, onPatientAdded, therapistId }) {
                 onChange={handleChange}
                 required
                 minLength="6"
+                placeholder="Minimum 6 characters"
               />
             </div>
           </div>
           
-          <div className="form-group">
+          <div className="add-patient-form-group">
             <label htmlFor="phone">Phone Number (Optional)</label>
             <input
               type="tel"
@@ -141,10 +144,11 @@ function AddPatientModal({ isOpen, onClose, onPatientAdded, therapistId }) {
               name="phone"
               value={patientData.phone}
               onChange={handleChange}
+              placeholder="Enter patient's phone number"
             />
           </div>
           
-          <div className="form-group">
+          <div className="add-patient-form-group">
             <label htmlFor="condition">Medical Condition</label>
             <input
               type="text"
@@ -152,10 +156,11 @@ function AddPatientModal({ isOpen, onClose, onPatientAdded, therapistId }) {
               name="condition"
               value={patientData.condition}
               onChange={handleChange}
+              placeholder="E.g., Post-stroke rehabilitation"
             />
           </div>
           
-          <div className="form-group">
+          <div className="add-patient-form-group">
             <label htmlFor="notes">Notes</label>
             <textarea
               id="notes"
@@ -163,14 +168,16 @@ function AddPatientModal({ isOpen, onClose, onPatientAdded, therapistId }) {
               rows="3"
               value={patientData.notes}
               onChange={handleChange}
+              placeholder="Add any relevant patient notes or instructions here"
             ></textarea>
           </div>
           
-          <div className="button-group">
+          <div className="add-patient-button-group">
             <Button
               type="button"
               variant="secondary"
               onClick={onClose}
+              className="add-patient-cancel-button"
             >
               Cancel
             </Button>
@@ -178,6 +185,7 @@ function AddPatientModal({ isOpen, onClose, onPatientAdded, therapistId }) {
               type="submit"
               variant="primary"
               disabled={loading}
+              className="add-patient-submit-button"
             >
               {loading ? "Adding Patient..." : "Add Patient"}
             </Button>
@@ -187,26 +195,5 @@ function AddPatientModal({ isOpen, onClose, onPatientAdded, therapistId }) {
     </div>
   );
 }
-
-async function updatePatients() {
-  const therapistId = "qtzFaYlslPcOcQd5dvOXjkbN8J62"; // Replace with the correct therapist UID
-  const patientsQuery = query(
-    collection(db, "users"),
-    where("role", "==", "patient"),
-    where("assignedTherapistId", "==", null) // Find patients without assignedTherapistId
-  );
-
-  const querySnapshot = await getDocs(patientsQuery);
-
-  querySnapshot.forEach(async (docSnapshot) => {
-    const patientRef = doc(db, "users", docSnapshot.id);
-    await updateDoc(patientRef, {
-      assignedTherapistId: therapistId,
-    });
-    console.log(`Updated patient: ${docSnapshot.id}`);
-  });
-}
-
-updatePatients();
 
 export default AddPatientModal;

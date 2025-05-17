@@ -1,6 +1,11 @@
 .progress-chart {
   margin-bottom: 20px;
-  width: 400%;
+  width: 100% !important;
+  height: auto !important;
+  min-height: 400px !important;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   position: relative;
 }
 
@@ -12,7 +17,7 @@
 }
 
 .chart-container {
-  height: 500px !important;
+  height: 400px !important;
   width: 100% !important;
   position: relative;
   margin: 0 auto;
@@ -25,6 +30,11 @@
 .chart-container canvas {
   width: 100% !important;
   max-width: 100% !important;
+}
+
+canvas {
+  width: 100% !important;
+  height: 100% !important;
 }
 
 /* Improve the data point visibility */
@@ -47,8 +57,14 @@
 
 @media (max-width: 768px) {
   .chart-container {
-    height: 400px !important;
+    height: 350px !important;
     padding: 0 10px;
+  }
+}
+
+@media (max-width: 576px) {
+  .chart-container {
+    height: 300px !important;
   }
 }
 

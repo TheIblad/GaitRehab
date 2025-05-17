@@ -4,19 +4,31 @@ import Card from "../components/common/Card";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { fetchUserData, fetchTherapistPatients } from "../utils/firestoreQueries";
+import { mockPatients, mockAchievements, mockTodos } from "../mock/mockTherapistData";
 import "./TherapistHome.css";
 
 function TherapistHome() {
   const { user } = useAuth();
   const [patients, setPatients] = useState([]);
   const [achievements, setAchievements] = useState([]);
-  const [activities, setActivities] = useState([]);
+  const [todos, setTodos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showMock, setShowMock] = useState(false);
   const navigate = useNavigate();
 
   // Function to load all therapist data
   const loadData = async () => {
     setLoading(true);
+    
+    if (showMock) {
+      // Use mock data
+      setPatients(mockPatients);
+      setAchievements(mockAchievements);
+      setTodos(mockTodos);
+      setLoading(false);
+      return;
+    }
+    
     if (user) {
       try {
         // Get the therapist's user data
@@ -33,6 +45,9 @@ function TherapistHome() {
           }));
 
           setPatients(processedPatients);
+          // In a real app, you would fetch real achievements and todos
+          setAchievements([]);
+          setTodos([]);
         }
       } catch (error) {
         console.error("Error loading therapist data:", error);
@@ -43,15 +58,31 @@ function TherapistHome() {
 
   useEffect(() => {
     loadData();
-  }, [user]);
+  }, [user, showMock]);
 
   const handleMessagePatient = (patientId) => {
     navigate(`/messages?user=${patientId}`);
   };
+  
+  const handleTodoToggle = (todoId) => {
+    setTodos(prevTodos => 
+      prevTodos.map(todo => 
+        todo.id === todoId ? { ...todo, completed: !todo.completed } : todo
+      )
+    );
+  };
 
   return (
     <div className="therapist-home">
-      <h2>Therapist Dashboard</h2>
+      <div className="therapist-header">
+        <h2>Therapist Dashboard</h2>
+        <button 
+          className="toggle-data-button" 
+          onClick={() => setShowMock(!showMock)}
+        >
+          {showMock ? "Show Real Data" : "Show Demo Data"}
+        </button>
+      </div>
 
       <div className="dashboard-summary">
         <Card className="summary-card">
@@ -86,46 +117,53 @@ function TherapistHome() {
         />
       </div>
 
-      {!loading && patients.length > 0 && (
+      {!loading && (
         <div className="dashboard-grid">
           <Card className="dashboard-card" title="Recent Achievements">
             {achievements.length > 0 ? (
               <ul className="achievements-list">
                 {achievements.map((achievement) => (
                   <li key={achievement.id}>
-                    <span className="achievement-patient">{achievement.badgeName}</span>
+                    <span className="achievement-patient">{achievement.patientName}</span>
                     <span className="achievement-badge">{achievement.badgeIcon}</span>
                     <span className="achievement-text">
+                      {achievement.badgeName} - {' '}
                       {achievement.earnedAt instanceof Date 
-                        ? achievement.earnedAt.toDateString() 
-                        : new Date().toDateString()}
+                        ? achievement.earnedAt.toLocaleDateString() 
+                        : new Date().toLocaleDateString()}
                     </span>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p>No recent achievements found.</p>
+              <p className="empty-state">No recent achievements found.</p>
             )}
           </Card>
 
           <Card className="dashboard-card" title="To-Do List">
-            {activities.length > 0 ? (
+            {todos.length > 0 ? (
               <ul className="todo-list">
-                {activities.map((activity) => (
-                  <li key={activity.id} className="todo-item">
-                    <input type="checkbox" id={`todo-${activity.id}`} />
-                    <label htmlFor={`todo-${activity.id}`}>
-                      {activity.type} - {
-                        activity.timestamp && typeof activity.timestamp.toDate === 'function'
-                          ? activity.timestamp.toDate().toLocaleDateString()
-                          : new Date().toLocaleDateString()
-                      }
+                {todos.map((todo) => (
+                  <li key={todo.id} className={`todo-item ${todo.completed ? 'completed' : ''}`}>
+                    <input 
+                      type="checkbox" 
+                      id={`todo-${todo.id}`} 
+                      checked={todo.completed}
+                      onChange={() => handleTodoToggle(todo.id)}
+                    />
+                    <label htmlFor={`todo-${todo.id}`}>
+                      {todo.description}
+                      <span className="todo-date">
+                        {todo.dueDate instanceof Date
+                          ? todo.dueDate.toLocaleDateString()
+                          : new Date().toLocaleDateString()}
+                      </span>
                     </label>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p>No activities found.</p>
+              <p className="empty-state">No tasks found.</p>
             )}
           </Card>
         </div>

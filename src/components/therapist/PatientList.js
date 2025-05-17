@@ -29,11 +29,27 @@ function PatientList({ patients = [], onPatientAdded }) {
     navigate(`/messages?user=${patientId}`);
   };
 
+  const handleViewPatient = (patientId) => {
+    navigate(`/patient-details?id=${patientId}`);
+  };
+
+  // Helper function to get initials from name
+  const getInitials = (name) => {
+    if (!name) return '?';
+    return name.split(' ').map(n => n[0]).join('').toUpperCase();
+  };
+
   return (
     <div className="patient-list">
       <div className="patient-list-header">
         <h3>My Patients</h3>
-        <Button variant="primary" onClick={handleOpenModal}>Add Patient</Button>
+        <Button 
+          variant="primary" 
+          onClick={handleOpenModal}
+          className="add-patient-button"
+        >
+          Add Patient
+        </Button>
       </div>
       <div className="patient-table">
         <div className="patient-table-header">
@@ -45,12 +61,25 @@ function PatientList({ patients = [], onPatientAdded }) {
         {patients.length === 0 ? (
           <div className="no-patients">
             <p>No patients found. Add your first patient to get started.</p>
+            <Button 
+              variant="primary" 
+              onClick={handleOpenModal}
+              className="add-patient-button"
+            >
+              Add Patient
+            </Button>
           </div>
         ) : (
           patients.map(patient => (
             <div key={patient.id} className="patient-row">
               <div className="patient-name">
+                <div className="patient-avatar">
+                  {getInitials(patient.displayName || patient.name)}
+                </div>
                 <span>{patient.displayName || patient.name}</span>
+                {patient.condition && (
+                  <span className="status-badge">{patient.condition}</span>
+                )}
               </div>
               <div className="patient-progress">
                 <div className="progress-bar">
@@ -65,10 +94,18 @@ function PatientList({ patients = [], onPatientAdded }) {
                 {patient.lastActive || 'N/A'}
               </div>
               <div className="patient-actions">
-                <Button variant="secondary" onClick={() => window.location.href = `/patient-details?id=${patient.id}`}>
+                <Button 
+                  variant="secondary" 
+                  className="view-patient-button"
+                  onClick={() => handleViewPatient(patient.id)}
+                >
                   View
                 </Button>
-                <Button variant="ghost" onClick={() => handleMessagePatient(patient.id)}>
+                <Button 
+                  variant="ghost" 
+                  className="message-patient-button"
+                  onClick={() => handleMessagePatient(patient.id)}
+                >
                   Message
                 </Button>
               </div>

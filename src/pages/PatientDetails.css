@@ -1,0 +1,434 @@
+.patient-details-container {
+  padding: 25px;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.patient-details-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+  width: 100%;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.header-left h2 {
+  margin: 0;
+  font-size: 1.8rem;
+  color: #1e293b;
+}
+
+.back-button {
+  padding: 8px 15px !important;
+  font-size: 0.9rem !important;
+}
+
+.condition-badge {
+  background-color: #fecaca;
+  color: #b91c1c;
+  font-size: 12px;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-weight: 500;
+}
+
+.header-right {
+  display: flex;
+  gap: 10px;
+}
+
+.toggle-button {
+  padding: 8px 15px !important;
+  font-size: 0.9rem !important;
+}
+
+.message-button {
+  padding: 8px 18px !important;
+  font-size: 0.95rem !important;
+  background-color: #3b82f6 !important;
+  color: white !important;
+}
+
+.patient-details-grid {
+  display: grid;
+  grid-template-columns: 350px 1fr;
+  gap: 25px;
+  width: 100%;
+}
+
+.details-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+  width: 100%;
+}
+
+.details-main {
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+  width: 100%;
+}
+
+/* Chart Card - Important: These styles make sure the chart container fits */
+.chart-card {
+  width: 100% !important;
+  box-sizing: border-box !important;
+  padding: 20px !important;
+}
+
+.chart-card h3 {
+  margin: 0 0 15px 0;
+  font-size: 1.1rem;
+  color: #1e293b;
+}
+
+/* Progress Chart Specific Styles */
+.progress-chart {
+  width: 100% !important;
+  height: auto !important;
+  min-height: 400px !important;
+}
+
+.chart-container {
+  width: 100% !important;
+  height: 400px !important;
+}
+
+/* Calendar and Activities cards layout */
+.details-main-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 25px;
+  width: 100%;
+}
+
+.calendar-card,
+.activities-card {
+  width: 100% !important;
+  box-sizing: border-box !important;
+  padding: 20px !important;
+}
+
+.calendar-card h3,
+.activities-card h3 {
+  margin: 0 0 15px 0;
+  font-size: 1.1rem;
+  color: #1e293b;
+}
+
+/* Patient Info Card */
+.patient-info-card,
+.patient-stats-card,
+.treatment-card {
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  background-color: #ffffff;
+  width: 100%;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.patient-info-card h3,
+.patient-stats-card h3,
+.treatment-card h3 {
+  margin: 0 0 15px 0;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 1.1rem;
+  color: #1e293b;
+}
+
+.patient-info-item {
+  display: flex;
+  margin-bottom: 12px;
+  width: 100%;
+}
+
+.patient-info-item .label {
+  width: 100px;
+  font-weight: 500;
+  color: #64748b;
+  flex-shrink: 0;
+}
+
+.patient-info-item .value {
+  color: #1e293b;
+  flex: 1;
+  word-break: break-word;
+}
+
+.patient-notes {
+  margin-top: 15px;
+  width: 100%;
+}
+
+.patient-notes h4 {
+  font-size: 1rem;
+  margin: 0 0 8px 0;
+  color: #64748b;
+}
+
+.patient-notes p {
+  margin: 0;
+  line-height: 1.5;
+  color: #1e293b;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 15px;
+  width: 100%;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 12px;
+  background-color: #f8fafc;
+  border-radius: 8px;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 5px;
+}
+
+.stat-label {
+  font-size: 14px;
+  color: #64748b;
+}
+
+.treatment-progress {
+  margin-bottom: 15px;
+  width: 100%;
+}
+
+.progress-label {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 14px;
+  color: #64748b;
+}
+
+.treatment-progress-bar {
+  height: 10px;
+  background-color: #f1f5f9;
+  border-radius: 5px;
+  overflow: hidden;
+  width: 100%;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background-color: #3b82f6;
+  border-radius: 5px;
+  transition: width 0.5s ease;
+}
+
+.treatment-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+}
+
+.treatment-list li {
+  padding: 10px 0;
+  border-bottom: 1px solid #f1f5f9;
+  color: #1e293b;
+  display: flex;
+  align-items: center;
+}
+
+.treatment-list li:last-child {
+  border-bottom: none;
+}
+
+.treatment-list li.completed {
+  color: #64748b;
+  text-decoration: line-through;
+}
+
+.treatment-list li.completed::before {
+  content: "✓";
+  margin-right: 8px;
+  color: #10b981;
+}
+
+.treatment-list li.in-progress {
+  font-weight: 500;
+}
+
+.treatment-list li.in-progress::before {
+  content: "►";
+  margin-right: 8px;
+  color: #3b82f6;
+}
+
+/* Filter controls for the charts */
+.chart-filters {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 15px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.chart-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.chart-filter-group label {
+  font-weight: 500;
+  color: #64748b;
+}
+
+.chart-filter-group select {
+  padding: 6px 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background-color: #f8fafc;
+  font-size: 0.9rem;
+}
+
+.time-range-buttons {
+  display: flex;
+  gap: 5px;
+}
+
+.time-range-buttons button {
+  padding: 6px 12px !important;
+  font-size: 0.85rem !important;
+  border-radius: 6px !important;
+}
+
+.time-range-buttons button.active {
+  background-color: #3b82f6 !important;
+  color: white !important;
+}
+
+.date-range-picker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.date-range-picker input {
+  padding: 6px 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  width: 140px;
+}
+
+.loading-state {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+  font-size: 1.1rem;
+  color: #64748b;
+}
+
+.error-state {
+  text-align: center;
+  padding: 50px 20px;
+}
+
+.error-state h2 {
+  color: #ef4444;
+  margin-bottom: 15px;
+}
+
+.error-state p {
+  margin-bottom: 25px;
+  color: #64748b;
+}
+
+@media (max-width: 1200px) {
+  .patient-details-grid {
+    grid-template-columns: 300px 1fr;
+    gap: 20px;
+  }
+}
+
+@media (max-width: 992px) {
+  .patient-details-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .details-main-split {
+    grid-template-columns: 1fr;
+  }
+  
+  .header-left {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  
+  .patient-details-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+  
+  .header-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+@media (max-width: 576px) {
+  .patient-details-container {
+    padding: 15px;
+  }
+  
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .header-right {
+    flex-direction: column;
+    width: 100%;
+    gap: 10px;
+  }
+  
+  .message-button,
+  .toggle-button {
+    width: 100%;
+  }
+  
+  .chart-filters {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .time-range-buttons {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .time-range-buttons button {
+    flex: 1;
+  }
+}
