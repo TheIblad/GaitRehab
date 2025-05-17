@@ -1,55 +1,335 @@
 .progress-container {
   padding: 20px;
-  max-width: 1200px; /* Allow wider content */
+  max-width: 1400px; /* Increase max width for more space */
   margin: 0 auto;
 }
 
 .progress-container h2 {
   text-align: center;
-  margin-bottom: 30px; /* Increased margin */
-  color: #111827; /* Darker heading */
+  margin-bottom: 25px;
+  color: #111827;
+  font-size: 1.8rem;
+}
+
+.demo-toggle-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 25px;
+}
+
+.demo-toggle-container button {
+  font-size: 1rem;
+  padding: 10px 20px;
+}
+
+/* Stats cards similar to PatientHome */
+.stats-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr); /* Always show 4 cards in a row */
+  gap: 20px;
+  margin-bottom: 30px;
+  width: 100%;
+}
+
+.stat-card {
+  text-align: center;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.stat-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+}
+
+.stat-value {
+  font-size: 32px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 8px;
+}
+
+.stat-label {
+  font-size: 15px;
+  color: #64748b;
+  margin-bottom: 12px;
+  font-weight: 500;
+}
+
+.stat-trend {
+  font-size: 13px;
+  padding: 5px 10px;
+  border-radius: 12px;
+  display: inline-block;
+}
+
+.stat-trend.positive {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+.stat-trend.negative {
+  background-color: #fee2e2;
+  color: #b91c1c;
+}
+
+.stat-trend.neutral {
+  background-color: #f1f5f9;
+  color: #475569;
 }
 
 .filter-card {
   margin-bottom: 30px;
-  padding: 15px 20px; /* Adjust padding */
+  padding: 20px;
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .filter-controls {
   display: flex;
   align-items: center;
   gap: 15px;
+  justify-content: center;
 }
 
 .filter-controls label {
   font-weight: 500;
   color: #374151;
+  font-size: 1.05rem;
 }
 
 .filter-controls select {
-  padding: 8px 12px;
+  padding: 10px 15px;
   border: 1px solid #d1d5db;
   border-radius: 6px;
   background-color: #fff;
-  min-width: 150px;
+  min-width: 200px;
+  font-size: 1rem;
+}
+
+/* Improved dashboard layout */
+.dashboard-layout {
+  display: grid;
+  grid-template-columns: 3fr 1fr; /* 75% main content, 25% sidebar */
+  grid-template-rows: auto auto; /* Let content determine height */
+  gap: 25px;
+  width: 100%;
+}
+
+.dashboard-main {
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+  width: 100%;
+}
+
+.dashboard-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+  /* Set minimum height to match main content */
+  min-height: 100%;
+}
+
+/* Fix the chart card sizing issues */
+
+/* Make progress sections take the full width without unnecessary padding */
+.progress-section {
+  width: 100%;
+  margin: 0;
+  padding: 0; /* Remove the padding */
+  box-sizing: border-box;
+}
+
+/* Override Card padding when used with chart-card */
+.chart-card.progress-section,
+.progress-section.chart-card {
+  padding: 0; /* Remove padding inside the card for charts */
+}
+
+/* Give the actual chart title proper spacing */
+.progress-chart h3,
+.calendar-heatmap h3 {
+  padding: 20px 25px;
+  margin: 0 0 10px 0;
+}
+
+/* Remove extra margin from chart cards */
+.dashboard-main .chart-card {
+  margin-bottom: 25px;
+  padding: 0; /* Remove the card padding */
+  overflow: visible; /* Allow chart to expand if needed */
+}
+
+/* Fix the dashboard main layout */
+.dashboard-layout {
+  display: grid;
+  grid-template-columns: 3fr 1fr; /* 75% main content, 25% sidebar */
+  gap: 25px;
+  width: 100%;
+}
+
+.dashboard-main {
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+  width: 100%;
+}
+
+/* Make chart containers full width and height */
+.chart-container {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: 500px !important;
+  min-height: 500px !important;
+  padding: 0 !important; /* Remove any padding */
+  margin: 0 !important;
+}
+
+/* Fix for nested card padding */
+.card .chart-card,
+.card .progress-section {
+  box-shadow: none;
+  border: none;
 }
 
 .progress-section {
-  margin-bottom: 30px; /* Consistent margin */
+  padding: 25px;
+  width: 100%;
+  margin: 0;
 }
 
 .progress-section h3 {
-  margin-bottom: 15px;
-  color: #1f2937; /* Slightly darker subheadings */
-  font-size: 1.1rem;
-  border-bottom: 1px solid #e5e7eb; /* Add subtle separator */
-  padding-bottom: 8px;
+  margin-bottom: 20px;
+  color: #1f2937;
+  font-size: 1.3rem;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 10px;
+  text-align: center;
 }
 
-/* Ensure charts/components inside cards don't have extra margins */
-.progress-section .card-content > div {
+.chart-card {
+  width: 100%;
+  height: 100%; /* Take up available height */
+}
+
+/* Chart heights */
+.chart-container {
+  height: 500px !important; /* Make progress chart taller */
+  min-height: 500px !important;
+}
+
+/* Calendar heatmap adjustments */
+.calendar-heatmap {
+  height: auto;
+  min-height: 400px; /* Taller heatmap */
+  width: 100%;
+  max-width: 100%;
   margin-bottom: 0;
 }
-.progress-section .card-content > div > h3 {
-  margin-top: 0; /* Remove potential double margin */
+
+.heatmap-grid {
+  max-width: 100%; /* Fill available width */
+}
+
+/* Activity log should fill its container */
+.activity-log {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.activities-card {
+  height: 100%;
+  flex: 1;
+}
+
+.recent-activities {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Target the chart containers within dashboard-main */
+.dashboard-main .chart-card {
+  width: 100%;
+  height: auto;
+  margin-bottom: 25px;
+}
+
+/* Make charts fill their container completely */
+.dashboard-main .chart-container {
+  height: 500px !important; /* Make progress chart taller */
+  min-height: 500px !important;
+  width: 100%;
+}
+
+/* Make calendar heatmap fill available width */
+.dashboard-main .calendar-heatmap {
+  height: auto;
+  min-height: 400px; /* Taller heatmap */
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Specifically target heatmap grid to ensure it fills width */
+.dashboard-main .heatmap-grid {
+  max-width: 100%;
+  width: 100%;
+}
+
+/* Make sure the progress section takes full width */
+.dashboard-main .progress-section {
+  padding: 25px;
+  width: 100%;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+  .dashboard-layout {
+    grid-template-columns: 7fr 3fr; /* 70/30 split on medium screens */
+  }
+  
+  .stats-cards {
+    grid-template-columns: repeat(4, 1fr); /* Still keep 4 cards if possible */
+  }
+}
+
+@media (max-width: 992px) {
+  .dashboard-layout {
+    grid-template-columns: 1fr; /* Stack on smaller screens */
+  }
+  
+  .chart-card {
+    min-height: 400px;
+  }
+  
+  .stats-cards {
+    grid-template-columns: repeat(2, 1fr); /* 2 cards per row on medium screens */
+  }
+}
+
+@media (max-width: 768px) {
+  .filter-controls {
+    flex-direction: column;
+  }
+  
+  .filter-controls select {
+    width: 100%;
+  }
+  
+  .chart-card {
+    min-height: 350px;
+  }
+}
+
+@media (max-width: 480px) {
+  .stats-cards {
+    grid-template-columns: 1fr; /* 1 card per row on very small screens */
+  }
 }

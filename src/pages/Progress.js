@@ -16,6 +16,14 @@ function Progress() {
   const [filterType, setFilterType] = useState('all');
   const [showMock, setShowMock] = useState(false);
 
+  // Example stats - in a real app, calculate these from activities data
+  const stats = {
+    steps: '6,313',
+    symmetry: '80%',
+    distance: '4.5km',
+    duration: '117min'
+  };
+
   useEffect(() => {
     const loadActivities = async () => {
       setLoading(true);
@@ -50,13 +58,43 @@ function Progress() {
   return (
     <div className="progress-container">
       <h2>Progress Overview</h2>
-      <Button
-        variant={showMock ? 'secondary' : 'primary'}
-        style={{ marginBottom: 16 }}
-        onClick={() => setShowMock((prev) => !prev)}
-      >
-        {showMock ? 'Show My Data' : 'Show Demo Data'}
-      </Button>
+      
+      <div className="demo-toggle-container">
+        <Button
+          variant={showMock ? 'secondary' : 'primary'}
+          onClick={() => setShowMock((prev) => !prev)}
+        >
+          {showMock ? 'Show My Data' : 'Show Demo Data'}
+        </Button>
+      </div>
+      
+      {/* Add stats cards similar to patient dashboard */}
+      <div className="stats-cards">
+        <Card className="stat-card">
+          <div className="stat-value">{stats.steps}</div>
+          <div className="stat-label">Today's Steps</div>
+          <div className="stat-trend positive">+12% from yesterday</div>
+        </Card>
+        
+        <Card className="stat-card">
+          <div className="stat-value">{stats.symmetry}</div>
+          <div className="stat-label">Gait Symmetry</div>
+          <div className="stat-trend positive">+3% from last week</div>
+        </Card>
+        
+        <Card className="stat-card">
+          <div className="stat-value">{stats.distance}</div>
+          <div className="stat-label">Distance</div>
+          <div className="stat-trend neutral">Same as average</div>
+        </Card>
+        
+        <Card className="stat-card">
+          <div className="stat-value">{stats.duration}</div>
+          <div className="stat-label">Exercise Time</div>
+          <div className="stat-trend negative">-10min from goal</div>
+        </Card>
+      </div>
+      
       <Card className="filter-card">
         <div className="filter-controls">
           <label htmlFor="activityTypeFilter">Filter by Activity Type:</label>
@@ -73,16 +111,25 @@ function Progress() {
           </select>
         </div>
       </Card>
-      <Card className="progress-section">
-        <ProgressChart activities={filteredActivities} />
-      </Card>
-      <Card className="progress-section">
-        <CalendarHeatmap activities={allActivities} />
-      </Card>
-      <Card className="progress-section">
-        <h3>Filtered Activity Log</h3>
-        <RecentActivities activities={filteredActivities} loading={loading} />
-      </Card>
+      
+      <div className="dashboard-layout">
+        <div className="dashboard-main">
+          <div className="progress-section chart-card">
+            <ProgressChart activities={filteredActivities} />
+          </div>
+          
+          <div className="progress-section chart-card">
+            <CalendarHeatmap activities={allActivities} />
+          </div>
+        </div>
+        
+        <div className="dashboard-sidebar">
+          <Card className="progress-section activity-log">
+            <h3>Activity Log</h3>
+            <RecentActivities activities={filteredActivities} loading={loading} />
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }
