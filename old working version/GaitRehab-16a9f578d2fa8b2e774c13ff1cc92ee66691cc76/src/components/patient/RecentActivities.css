@@ -1,0 +1,60 @@
+.recent-activities {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.recent-activities h3 {
+  margin-bottom: 15px;
+}
+
+.activity-card {
+  padding: 15px;
+  margin-bottom: 10px;
+}
+
+.activity-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.activity-header h4 {
+  font-weight: 600;
+  margin: 0;
+}
+
+.activity-date {
+  font-size: 14px;
+  color: #64748b;
+}
+
+.activity-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.activity-detail {
+  display: flex;
+  align-items: center;
+}
+
+.detail-icon {
+  margin-right: 8px;
+}
+
+/* Add styles for when there are no activities */
+.no-activities {
+  text-align: center;
+  padding: 20px;
+  color: #64748b;
+}
+
+/* Loading state */
+.loading-activities {
+  text-align: center;
+  padding: 20px;
+  color: #64748b;
+}

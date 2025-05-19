@@ -17,7 +17,6 @@ const StepTracker = ({ onSessionComplete, userSettings = {} }) => {
   const [elapsedTime, setElapsedTime] = useState(0);
   const [showPermissionPrompt, setShowPermissionPrompt] = useState(false);
   const [permissionDenied, setPermissionDenied] = useState(false);
-  const [isAvailable, setIsAvailable] = useState(false);
   
   // Timer ref
   const timerRef = useRef(null);
@@ -28,6 +27,7 @@ const StepTracker = ({ onSessionComplete, userSettings = {} }) => {
     distance,
     cadence,
     symmetry,
+    isAvailable,
     isActive,
     error,
     usingFallback,
@@ -38,7 +38,7 @@ const StepTracker = ({ onSessionComplete, userSettings = {} }) => {
   } = useStepCounter({
     userHeight: height,
     userGender: gender,
-    enabled: true // Always enable the step counter
+    enabled: true
   });
   
   // Check for sensor permission on mount
@@ -48,22 +48,21 @@ const StepTracker = ({ onSessionComplete, userSettings = {} }) => {
         // First try to use DeviceMotion as it's more widely supported
         if ('DeviceMotionEvent' in window) {
           setIsAvailable(true);
-          return;
         }
         
         // Then try Accelerometer API
         if ('permissions' in navigator) {
-          const result = await navigator.permissions.query({ name: 'accelerometer' });
-          if (result.state === 'prompt') {
-            setShowPermissionPrompt(true);
-          } else if (result.state === 'denied') {
-            setPermissionDenied(true);
-          } else {
-            setIsAvailable(true);
+          try {
+            const result = await navigator.permissions.query({ name: 'accelerometer' });
+            if (result.state === 'prompt') {
+              setShowPermissionPrompt(true);
+            } else if (result.state === 'denied') {
+              setPermissionDenied(true);
+            }
+          } catch (err) {
+            // permissions API might throw if accelerometer permission name is not supported
+            console.warn('Could not query accelerometer permission:', err);
           }
-        } else {
-          // If permissions API is not available, assume sensors are available
-          setIsAvailable(true);
         }
       } catch (err) {
         console.warn('Could not check permissions:', err);
@@ -187,22 +186,22 @@ const StepTracker = ({ onSessionComplete, userSettings = {} }) => {
       <h3>Step Tracker</h3>
       
       <div className="tracker-metrics">
-        <div className="tracker-metric-item">
+        <div className="metric-item">
           <div className="metric-value">{steps.toLocaleString()}</div>
           <div className="metric-label">Steps</div>
         </div>
         
-        <div className="tracker-metric-item">
+        <div className="metric-item">
           <div className="metric-value">{distance.toFixed(2)}</div>
           <div className="metric-label">Distance (km)</div>
         </div>
         
-        <div className="tracker-metric-item">
+        <div className="metric-item">
           <div className="metric-value">{cadence || 0}</div>
           <div className="metric-label">Steps/min</div>
         </div>
         
-        <div className="tracker-metric-item">
+        <div className="metric-item">
           <div className="metric-value">{symmetry || 0}%</div>
           <div className="metric-label">Symmetry</div>
         </div>

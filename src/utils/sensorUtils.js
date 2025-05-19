@@ -11,8 +11,13 @@ const AccelerometerClass = typeof window !== 'undefined' ?
  * @returns {boolean} Whether sensors are supported
  */
 export const isSensorsSupported = () => {
-  return typeof window !== 'undefined' && 
-    ('Accelerometer' in window || 'DeviceMotionEvent' in window);
+  // Always check for DeviceMotion as a fallback first
+  if (typeof window !== 'undefined' && 'DeviceMotionEvent' in window) {
+    return true;
+  }
+  
+  // Then check for Accelerometer API
+  return typeof window !== 'undefined' && 'Accelerometer' in window;
 };
 
 /**
@@ -20,7 +25,7 @@ export const isSensorsSupported = () => {
  * @returns {boolean} Whether permissions API is available
  */
 export const isPermissionsApiAvailable = () => {
-  return 'permissions' in navigator;
+  return typeof navigator !== 'undefined' && 'permissions' in navigator;
 };
 
 /**
@@ -104,16 +109,16 @@ export const isInMotion = (magnitude, threshold = 10.5) => {
 export const estimateStepLength = (heightCm, gender = 'neutral') => {
   if (!heightCm || heightCm <= 0) {
     // Default average step length if no height provided
-    return 0.65; // More realistic default
+    return 0.762; // ~30 inches in meters (about 76.2 cm)
   }
   
-  // Different formulas based on gender - using more realistic multipliers
+  // Different formulas based on gender
   if (gender.toLowerCase() === 'male') {
-    return heightCm * 0.415 / 100; 
+    return heightCm * 0.415 / 100; // Convert to meters
   } else if (gender.toLowerCase() === 'female') {
-    return heightCm * 0.413 / 100;
+    return heightCm * 0.413 / 100; // Convert to meters
   } else {
-    return heightCm * 0.414 / 100;
+    return heightCm * 0.414 / 100; // Neutral formula
   }
 };
 
@@ -122,7 +127,7 @@ export const estimateStepLength = (heightCm, gender = 'neutral') => {
  * @returns {boolean} Whether DeviceMotionEvent is supported
  */
 export const isDeviceMotionSupported = () => {
-  return 'DeviceMotionEvent' in window;
+  return typeof window !== 'undefined' && 'DeviceMotionEvent' in window;
 };
 
 /**

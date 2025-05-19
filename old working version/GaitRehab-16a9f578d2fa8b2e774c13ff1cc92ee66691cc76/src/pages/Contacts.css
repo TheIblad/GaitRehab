@@ -1,0 +1,159 @@
+.contacts-container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.contacts-container h1 {
+  margin-bottom: 20px;
+  color: #333;
+}
+
+.contacts-container p {
+  margin: 10px 0;
+}
+
+/* Card styles */
+.contacts-container .user-info-card,
+.contacts-container .contacts-list-card,
+.contacts-container .search-card {
+  margin-bottom: 20px;
+}
+
+/* User info section */
+.user-info-card h3 {
+  margin-bottom: 15px;
+  color: #444;
+}
+
+/* Contacts list */
+.contacts-list {
+  list-style: none;
+  padding: 0;
+  margin: 15px 0 0;
+}
+
+.contact-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  border-radius: 8px;
+  background-color: #f9f9f9;
+  margin-bottom: 10px;
+  transition: background-color 0.2s;
+}
+
+.contact-item:hover {
+  background-color: #f0f0f0;
+}
+
+.contact-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.contact-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #0284c7;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 18px;
+}
+
+.contact-info h4 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.contact-info p {
+  margin: 5px 0 0;
+  font-size: 14px;
+  color: #666;
+}
+
+/* Search section */
+.search-input-container {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.search-input {
+  flex: 1;
+  padding: 10px 15px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 16px;
+}
+
+.search-results {
+  margin-top: 20px;
+  border-top: 1px solid #eee;
+  padding-top: 15px;
+}
+
+.search-results h4 {
+  margin-bottom: 10px;
+  font-size: 16px;
+  color: #333;
+}
+
+.results-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.result-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  border-radius: 6px;
+  background-color: #f0f7ff;
+  margin-bottom: 8px;
+  transition: background-color 0.2s;
+}
+
+.result-item:hover {
+  background-color: #e4f0ff;
+}
+
+.result-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.result-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: #7366ff;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.result-info h4 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.result-info p {
+  margin: 3px 0 0;
+  font-size: 14px;
+  color: #666;
+} 

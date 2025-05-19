@@ -171,7 +171,7 @@ function PatientHome() {
       
       <div className="dashboard-content">
         <div className="content-left">
-          {/* Always show StepTracker */}
+          {/* Always show StepTracker - no conditional rendering */}
           <StepTracker 
             onSessionComplete={handleActivitySessionComplete}
             userSettings={{ 
@@ -189,40 +189,20 @@ function PatientHome() {
           </Card>
         </div>
         <div className="content-right">
-          {showMock && (
-            <Card className="activities-card">
-              <RecentActivities activities={activities} loading={loading} />
-            </Card>
-          )}
-          {!showMock && (
-            <Card className="activities-card">
-              {loading ? (
-                <p>Loading activities...</p>
-              ) : activities.length > 0 ? (
-                <RecentActivities activities={activities} />
-              ) : (
-                <p>No activities found. Start logging your progress!</p>
-              )}
-            </Card>
-          )}
-          
-          {/* Add achievements section */}
-          <Card className="achievements-card">
-            <h3>Recent Achievements</h3>
-            {user && <AchievementsList userId={user.uid} limit={3} />}
-            <div className="view-all-achievements">
-              <Link to="/achievements" className="view-all-link">View All Achievements</Link>
-            </div>
+          <Card className="activities-card">
+            <RecentActivities activities={activities} loading={loading} />
           </Card>
         </div>
       </div>
 
-      {/* Activity Modal with onActivityAdded callback */}
       <ActivityModal 
         isOpen={modalOpen} 
-        onClose={() => setModalOpen(false)}
+        onClose={() => {
+          setModalOpen(false);
+          setPrefilledActivityData(null); // Clear prefilled data when closing
+        }}
         onActivityAdded={handleActivityAdded}
-        prefilledData={prefilledActivityData} // Pass prefilled data to the modal
+        prefilledData={prefilledActivityData}
       />
     </div>
   );

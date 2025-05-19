@@ -10,7 +10,7 @@ import {
 
 // Add this check at the beginning of the file
 const AccelerometerClass = typeof window !== 'undefined' ? 
-  (window.Accelerometer || null) : null;
+  (window.Accelerometer || (typeof Accelerometer !== 'undefined' ? Accelerometer : null)) : null;
 
 /**
  * Hook to access device accelerometer data

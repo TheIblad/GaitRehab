@@ -1,0 +1,52 @@
+.card {
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e2e8f0;
+  padding: 20px;
+  overflow: hidden;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Special styling for chart cards - make them 400% wider */
+.chart-card {
+  width: 100% !important;
+  height: auto !important;
+  min-height: 500px !important;
+  padding: 20px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  max-width: 100% !important; /* Ensure it doesn't exceed container width */
+}
+
+/* Special styling for calendar cards - make them 400% wider */
+.calendar-card {
+  width: 100% !important;
+  height: auto !important;
+  min-height: 500px !important;
+  padding: 20px !important;
+  max-width: 100% !important; /* Ensure it doesn't exceed container width */
+}
+
+/* Special styling for activities cards */
+.activities-card {
+  width: 100% !important;
+  height: auto !important;
+  min-height: 500px !important;
+  padding: 20px !important;
+  overflow-y: auto !important;
+}
+
+.card-title {
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 1.1rem;
+  color: #1e293b;
+  font-weight: 600;
+}
+
+.card-content {
+  width: 100%;
+  color: #475569;
+}

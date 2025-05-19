@@ -7,11 +7,11 @@ import { estimateStepLength } from '../utils/sensorUtils';
  */
 const useStepCounter = (options = {}) => {
   const {
-    stepThreshold = 9.0,      // Lower threshold to better detect steps
-    stepCooldown = 250,        // Shorter cooldown to detect steps more frequently
+    stepThreshold = 11.0,      // Threshold to detect a step
+    stepCooldown = 250,        // Minimum time between steps in ms
     userHeight = 170,          // User height in cm for step length calculation
     userGender = 'neutral',    // User gender for step length calculation
-    filterCoefficient = 0.2,   // Reduced filter coefficient for more responsive readings
+    filterCoefficient = 0.2,   // Low-pass filter coefficient
     onStepDetected = null,     // Callback when a step is detected
     enabled = true            // Whether the step counter is enabled
   } = options;
@@ -62,15 +62,6 @@ const useStepCounter = (options = {}) => {
     
     const now = Date.now();
     const { magnitude } = acceleration;
-    
-    // Debug logging
-    console.log("Accelerometer reading:", {
-      magnitude: acceleration.magnitude,
-      threshold: stepThreshold,
-      timeSinceLastStep: now - lastStepTime.current,
-      isPeak: isPeak.current,
-      motionVariance: motionBuffer.current.length > 1 ? calculateVariance(motionBuffer.current) : 0,
-    });
     
     // Add to motion buffer
     motionBuffer.current.push(magnitude);
