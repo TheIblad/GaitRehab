@@ -7,11 +7,11 @@ import { estimateStepLength } from '../utils/sensorUtils';
  */
 const useStepCounter = (options = {}) => {
   const {
-    stepThreshold = 20.0,      // Increased threshold significantly to reduce false positives
-    stepCooldown = 800,        // Increased cooldown to prevent rapid counting
+    stepThreshold = 12.0,      // Reduced threshold to detect more subtle movements
+    stepCooldown = 400,        // Reduced cooldown to allow more frequent step detection
     userHeight = 170,          // User height in cm for step length calculation
     userGender = 'neutral',    // User gender for step length calculation
-    filterCoefficient = 0.3,   // Low-pass filter coefficient
+    filterCoefficient = 0.2,   // Reduced filter coefficient for more responsive readings
     onStepDetected = null,     // Callback when a step is detected
     enabled = true            // Whether the step counter is enabled
   } = options;
@@ -63,7 +63,16 @@ const useStepCounter = (options = {}) => {
     
     // Calculate motion variance
     const motionVariance = calculateVariance(motionBuffer.current);
-    const isInMotion = motionVariance > 0.5; // Threshold for motion detection
+    const isInMotion = motionVariance > 0.2; // Reduced threshold for motion detection
+    
+    // Debug logging
+    console.log('Motion Data:', {
+      magnitude,
+      motionVariance,
+      isInMotion,
+      timeSinceLastStep: now - lastStepTime.current,
+      isPeak: isPeak.current
+    });
     
     // Check if we're past the cooldown period
     const timeSinceLastStep = now - lastStepTime.current;
@@ -72,7 +81,7 @@ const useStepCounter = (options = {}) => {
       // Enhanced peak detection
       if (magnitude > stepThreshold && !isPeak.current) {
         // Check if this is a significant enough change from previous readings
-        const isSignificantChange = Math.abs(magnitude - lastMagnitude.current) > 8;
+        const isSignificantChange = Math.abs(magnitude - lastMagnitude.current) > 4; // Reduced threshold
         
         if (isSignificantChange) {
           isPeak.current = true;
