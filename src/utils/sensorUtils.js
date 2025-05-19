@@ -104,16 +104,16 @@ export const isInMotion = (magnitude, threshold = 10.5) => {
 export const estimateStepLength = (heightCm, gender = 'neutral') => {
   if (!heightCm || heightCm <= 0) {
     // Default average step length if no height provided
-    return 0.762; // ~30 inches in meters
+    return 0.65; // Reduced from 0.762 to be more conservative
   }
   
-  // Different formulas based on gender
+  // Different formulas based on gender - using more conservative multipliers
   if (gender.toLowerCase() === 'male') {
-    return heightCm * 0.415 / 100; // Convert to meters
+    return heightCm * 0.38 / 100; // Reduced from 0.415
   } else if (gender.toLowerCase() === 'female') {
-    return heightCm * 0.413 / 100; // Convert to meters
+    return heightCm * 0.37 / 100; // Reduced from 0.413
   } else {
-    return heightCm * 0.414 / 100; // Neutral formula
+    return heightCm * 0.375 / 100; // Reduced from 0.414
   }
 };
 

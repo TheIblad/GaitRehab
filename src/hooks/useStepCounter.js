@@ -7,8 +7,8 @@ import { estimateStepLength } from '../utils/sensorUtils';
  */
 const useStepCounter = (options = {}) => {
   const {
-    stepThreshold = 11.2,      // Acceleration threshold to register a step
-    stepCooldown = 300,        // Minimum time between steps in ms
+    stepThreshold = 15.0,      // Increased threshold to reduce false positives
+    stepCooldown = 500,        // Increased cooldown to prevent rapid counting
     userHeight = 170,          // User height in cm for step length calculation
     userGender = 'neutral',    // User gender for step length calculation
     filterCoefficient = 0.3,   // Low-pass filter coefficient
@@ -56,62 +56,67 @@ const useStepCounter = (options = {}) => {
     const timeSinceLastStep = now - lastStepTime.current;
     
     if (timeSinceLastStep > stepCooldown) {
-      // Very simple peak detection - could be improved
+      // Enhanced peak detection with additional checks
       if (magnitude > stepThreshold) {
-        // Increment step count
-        setSteps(prevSteps => {
-          const newSteps = prevSteps + 1;
-          
-          // Update distance based on step length
-          const newDistance = newSteps * stepLengthMeters.current;
-          setDistance(newDistance);
-          
-          // Record step interval for cadence calculation
-          if (lastStepTime.current > 0) {
-            stepIntervals.current.push(timeSinceLastStep);
-            
-            // Keep last 10 intervals for calculations
-            if (stepIntervals.current.length > 10) {
-              stepIntervals.current.shift();
-            }
-            
-            // Calculate cadence (steps per minute)
-            const avgInterval = stepIntervals.current.reduce((a, b) => a + b, 0) / stepIntervals.current.length;
-            const stepsPerMinute = Math.round(60000 / avgInterval);
-            setCadence(stepsPerMinute);
-            
-            // Record step time for symmetry analysis
-            stepTimeHistory.current.push({
-              timestamp: now,
-              interval: timeSinceLastStep
-            });
-            
-            // Keep last 20 steps for symmetry calculation
-            if (stepTimeHistory.current.length > 20) {
-              stepTimeHistory.current.shift();
-            }
-            
-            // Calculate symmetry from step intervals
-            // This is a simplified approach - real gait asymmetry needs more complex analysis
-            if (stepTimeHistory.current.length >= 6) {
-              calculateSymmetry();
-            }
-          }
-          
-          // Fire callback if provided
-          if (onStepDetected) {
-            onStepDetected({
-              steps: newSteps,
-              distance: newDistance,
-              timestamp: now
-            });
-          }
-          
-          return newSteps;
-        });
+        // Check if this is a significant enough change from previous readings
+        const isSignificantChange = Math.abs(magnitude - 9.8) > 5; // Must deviate significantly from gravity
         
-        // Update last step time
-        lastStepTime.current = now;
+        if (isSignificantChange) {
+          // Increment step count
+          setSteps(prevSteps => {
+            const newSteps = prevSteps + 1;
+            
+            // Update distance based on step length
+            const newDistance = newSteps * stepLengthMeters.current;
+            setDistance(newDistance);
+            
+            // Record step interval for cadence calculation
+            if (lastStepTime.current > 0) {
+              stepIntervals.current.push(timeSinceLastStep);
+              
+              // Keep last 10 intervals for calculations
+              if (stepIntervals.current.length > 10) {
+                stepIntervals.current.shift();
+              }
+              
+              // Calculate cadence (steps per minute)
+              const avgInterval = stepIntervals.current.reduce((a, b) => a + b, 0) / stepIntervals.current.length;
+              const stepsPerMinute = Math.round(60000 / avgInterval);
+              setCadence(stepsPerMinute);
+              
+              // Record step time for symmetry analysis
+              stepTimeHistory.current.push({
+                timestamp: now,
+                interval: timeSinceLastStep
+              });
+              
+              // Keep last 20 steps for symmetry calculation
+              if (stepTimeHistory.current.length > 20) {
+                stepTimeHistory.current.shift();
+              }
+              
+              // Calculate symmetry from step intervals
+              // This is a simplified approach - real gait asymmetry needs more complex analysis
+              if (stepTimeHistory.current.length >= 6) {
+                calculateSymmetry();
+              }
+            }
+            
+            // Fire callback if provided
+            if (onStepDetected) {
+              onStepDetected({
+                steps: newSteps,
+                distance: newDistance,
+                timestamp: now
+              });
+            }
+            
+            return newSteps;
+          });
+          
+          // Update last step time
+          lastStepTime.current = now;
+        }
       }
     }
   }, [acceleration, isActive, isRunning, onStepDetected, stepCooldown, stepThreshold]);
