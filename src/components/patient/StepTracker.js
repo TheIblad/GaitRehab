@@ -232,12 +232,19 @@ const StepTracker = ({ onSessionComplete, userSettings = {} }) => {
         </div>
       )}
       
-      <div className="tracker-controls">
+      <div className="tracker-controls" style={{ display: 'flex', marginTop: '20px' }}>
         {!isTracking ? (
           <Button 
             variant="primary" 
             className="tracker-start-btn"
             onClick={handleStartTracking}
+            style={{ 
+              width: '100%', 
+              padding: '12px 20px',
+              fontSize: '16px',
+              fontWeight: 'bold',
+              zIndex: 5  // Ensure it's above other elements
+            }}
           >
             Start Tracking
           </Button>
@@ -247,6 +254,12 @@ const StepTracker = ({ onSessionComplete, userSettings = {} }) => {
               variant="danger" 
               className="tracker-stop-btn"
               onClick={handleStopTracking}
+              style={{ 
+                flex: 1,
+                padding: '12px 20px',
+                fontSize: '16px',
+                fontWeight: 'bold'  
+              }}
             >
               Stop & Save
             </Button>
@@ -254,6 +267,11 @@ const StepTracker = ({ onSessionComplete, userSettings = {} }) => {
               variant="secondary" 
               className="tracker-reset-btn"
               onClick={handleResetTracking}
+              style={{ 
+                flex: 1,
+                padding: '12px 20px',
+                fontSize: '16px'
+              }}
             >
               Reset
             </Button>

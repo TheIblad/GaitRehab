@@ -82,6 +82,10 @@
   display: flex;
   gap: 10px;
   justify-content: center;
+  margin-top: 20px;
+  width: 100%;
+  position: relative;
+  z-index: 2; /* Ensure buttons are above other elements */
 }
 
 .tracker-controls button {
@@ -98,6 +102,7 @@
   font-weight: 500 !important;
   border-radius: 8px !important;
   min-width: 120px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .tracker-start-btn {
@@ -266,5 +271,32 @@
   .tracker-stop-btn,
   .tracker-reset-btn {
     width: 100%;
+  }
+}
+
+/* Mobile-specific fixes */
+@media (max-width: 768px) {
+  .tracker-controls {
+    flex-direction: column;
+    align-items: center;
+    padding: 0 15px;
+    margin-bottom: 20px; /* Ensure there's space at the bottom */
+  }
+  
+  .tracker-start-btn,
+  .tracker-stop-btn,
+  .tracker-reset-btn {
+    width: 100%;
+    margin-bottom: 10px;
+    /* Make buttons bigger and more tappable on mobile */
+    padding: 15px 20px;
+    font-size: 18px;
+  }
+  
+  /* Fix for potential z-index or overflow issues */
+  .step-tracker-card {
+    overflow: visible !important;
+    position: relative;
+    padding-bottom: 80px; /* Add extra space at bottom for buttons */
   }
 }
