@@ -58,65 +58,59 @@ const useStepCounter = (options = {}) => {
     if (timeSinceLastStep > stepCooldown) {
       // Enhanced peak detection with additional checks
       if (magnitude > stepThreshold) {
-        // Check if this is a significant enough change from previous readings
-        const isSignificantChange = Math.abs(magnitude - 9.8) > 5; // Must deviate significantly from gravity
-        
-        if (isSignificantChange) {
-          // Increment step count
-          setSteps(prevSteps => {
-            const newSteps = prevSteps + 1;
-            
-            // Update distance based on step length
-            const newDistance = (newSteps * stepLengthMeters.current) / 1000; // Convert to kilometers
-            setDistance(newDistance);
-            
-            // Record step interval for cadence calculation
-            if (lastStepTime.current > 0) {
-              const interval = timeSinceLastStep;
-              stepIntervals.current.push(interval);
-              
-              // Keep last 10 intervals for calculations
-              if (stepIntervals.current.length > 10) {
-                stepIntervals.current.shift();
-              }
-              
-              // Record step time for symmetry analysis
-              stepTimeHistory.current.push({
-                timestamp: now,
-                interval: interval
-              });
-              
-              // Keep last 20 steps for symmetry calculation
-              if (stepTimeHistory.current.length > 20) {
-                stepTimeHistory.current.shift();
-              }
-              
-              // Calculate cadence (steps per minute)
-              const avgInterval = stepIntervals.current.reduce((a, b) => a + b, 0) / stepIntervals.current.length;
-              const stepsPerMinute = Math.round(60000 / avgInterval);
-              setCadence(stepsPerMinute);
-              
-              // Calculate symmetry from step intervals if we have enough data
-              if (stepTimeHistory.current.length >= 4) {
-                calculateSymmetry();
-              }
-            }
-            
-            // Fire callback if provided
-            if (onStepDetected) {
-              onStepDetected({
-                steps: newSteps,
-                distance: newDistance,
-                timestamp: now
-              });
-            }
-            
-            return newSteps;
-          });
+        // Increment step count
+        setSteps(prevSteps => {
+          const newSteps = prevSteps + 1;
           
-          // Update last step time
-          lastStepTime.current = now;
-        }
+          // Update distance based on step length
+          const newDistance = (newSteps * stepLengthMeters.current) / 1000; // Convert to kilometers
+          setDistance(newDistance);
+          
+          // Record step interval for cadence calculation
+          if (lastStepTime.current > 0) {
+            const interval = timeSinceLastStep;
+            stepIntervals.current.push(interval);
+            
+            // Keep last 10 intervals for calculations
+            if (stepIntervals.current.length > 10) {
+              stepIntervals.current.shift();
+            }
+            
+            // Record step time for symmetry analysis
+            stepTimeHistory.current.push({
+              timestamp: now,
+              interval: interval
+            });
+            
+            // Keep last 20 steps for symmetry calculation
+            if (stepTimeHistory.current.length > 20) {
+              stepTimeHistory.current.shift();
+            }
+            
+            // Calculate cadence (steps per minute)
+            const avgInterval = stepIntervals.current.reduce((a, b) => a + b, 0) / stepIntervals.current.length;
+            const stepsPerMinute = Math.round(60000 / avgInterval);
+            setCadence(stepsPerMinute);
+            
+            // Calculate symmetry at regular intervals
+            if (stepTimeHistory.current.length >= 4 && newSteps % 2 === 0) {
+              calculateSymmetry();
+            }
+          }
+          
+          // Fire callback if provided
+          if (onStepDetected) {
+            onStepDetected({
+              steps: newSteps,
+              timestamp: now
+            });
+          }
+          
+          return newSteps;
+        });
+        
+        // Update last step time
+        lastStepTime.current = now;
       }
     }
   }, [acceleration, isActive, isRunning, onStepDetected, stepCooldown, stepThreshold]);
@@ -129,6 +123,8 @@ const useStepCounter = (options = {}) => {
     const intervals = stepTimeHistory.current.map(step => step.interval);
     const mean = intervals.reduce((a, b) => a + b, 0) / intervals.length;
     
+    if (mean === 0) return; // Avoid division by zero
+    
     // Calculate standard deviation
     const squaredDiffs = intervals.map(interval => Math.pow(interval - mean, 2));
     const variance = squaredDiffs.reduce((a, b) => a + b, 0) / intervals.length;
@@ -137,13 +133,17 @@ const useStepCounter = (options = {}) => {
     // Calculate coefficient of variation (CV)
     const cv = (stdDev / mean) * 100;
     
-    // Convert to symmetry percentage (100% - asymmetry)
+    // Improve the symmetry calculation - the current approach makes it almost always 0
     // Lower CV means more consistent steps, which suggests better symmetry
-    const symmetryValue = Math.min(100, Math.max(0, 100 - cv));
+    // Scale this more realistically - an excellent CV of 10% should map to high symmetry (90%)
+    const symmetryValue = Math.min(100, Math.max(0, Math.round(100 - cv/2)));
     
-    console.log("Calculated symmetry:", Math.round(symmetryValue), "% from", intervals.length, "intervals");
+    console.log("Raw CV:", cv);
+    console.log("Calculated symmetry:", symmetryValue, "% from", intervals.length, "intervals");
     
-    setSymmetry(Math.round(symmetryValue));
+    // Ensure we're getting a reasonable range: typical values should be 50-90%
+    // Even with poor symmetry, values shouldn't be constantly near zero
+    setSymmetry(symmetryValue);
   };
   
   // Start the step counter

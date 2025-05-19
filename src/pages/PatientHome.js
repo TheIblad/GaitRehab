@@ -1,19 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import Card from '../components/common/Card';
+import Button from '../components/common/Button';
+import StepTracker from '../components/patient/StepTracker';
 import ProgressChart from '../components/patient/ProgressChart';
 import CalendarHeatmap from '../components/patient/CalendarHeatmap';
 import RecentActivities from '../components/patient/RecentActivities';
 import ActivityModal from '../components/patient/ActivityModal';
-import StepTracker from '../components/patient/StepTracker'; // Add import for StepTracker
-import Card from '../components/common/Card';
-import Button from '../components/common/Button';
-import './PatientHome.css';
-import { fetchUserActivities } from '../utils/firestoreQueries';
-import { useAuth } from '../contexts/AuthContext';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore'; // Add imports for Firestore
-import { db } from '../firebase/config'; // Import db
-import { mockActivities } from '../mock/mockActivities';
 import AchievementsList from '../components/patient/AchievementsList';
-import { Link } from 'react-router-dom';
+import { fetchUserActivities } from '../utils/firestoreQueries';
+import './PatientHome.css';
 
 function PatientHome() {
   const { user } = useAuth();
@@ -21,36 +18,34 @@ function PatientHome() {
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showMock, setShowMock] = useState(false);
-  const [showTracker, setShowTracker] = useState(false); // State to toggle the tracker
-  const [prefilledActivityData, setPrefilledActivityData] = useState(null); // State to store prefilled activity data
+  const [prefilledActivityData, setPrefilledActivityData] = useState(null);
 
-  // Function to load activities data
-  const loadActivities = async () => {
+  // Wrap loadActivities in useCallback
+  const loadActivities = useCallback(async () => {
     setLoading(true);
     if (user && !showMock) {
       try {
-        console.log("Fetching activities for user:", user.uid);
         const userActivities = await fetchUserActivities(user.uid);
-        console.log("Fetched activities:", userActivities);
         setActivities(userActivities);
       } catch (error) {
-        console.error("Error fetching activities:", error);
+        console.error("Error loading activities:", error);
         setActivities([]);
       }
     } else if (showMock) {
-      console.log("Using mock activities");
-      setActivities(mockActivities);
+      // Use mock data if showMock is true
+      import('../mock/mockActivities').then(({ mockActivities }) => {
+        setActivities(mockActivities);
+      });
     } else {
-      console.log("No user logged in");
       setActivities([]);
     }
     setLoading(false);
-  };
+  }, [user, showMock]); // Dependencies for useCallback
 
-  // Single useEffect for loading activities
+  // useEffect now has stable dependencies
   useEffect(() => {
     loadActivities();
-  }, [user, showMock]);
+  }, [loadActivities]); // loadActivities is now stable
 
   // Calculate stats based on activities
   const calculateStats = () => {
@@ -97,57 +92,23 @@ function PatientHome() {
     loadActivities(); // Refresh activities when a new one is added
   };
 
-  // Handler for recording step tracking session
-  const handleTrackerActivityRecord = async (sessionData) => {
-    if (!user) return;
-
-    try {
-      // Add a new activity with the session data
-      const activityData = {
-        uid: user.uid,
-        timestamp: serverTimestamp(),
-        type: 'Step Tracking',
-        steps: sessionData.steps,
-        distance: sessionData.distance,
-        duration: sessionData.duration,
-        symmetry: sessionData.symmetry,
-        cadence: sessionData.cadence || 0,
-        notes: 'Recorded with step tracker',
-      };
-
-      console.log('Saving step tracking activity:', activityData);
-      await addDoc(collection(db, 'activities'), activityData);
-      console.log('Activity saved successfully');
-      
-      // Refresh activities list
-      loadActivities();
-      
-      // Show success message
-      alert('Activity recorded successfully!');
-    } catch (error) {
-      console.error('Error saving step tracking activity:', error);
-      alert('Failed to save activity. Please try again.');
-    }
-  };
-
   // Add this function to handle completing a step tracking session
   const handleActivitySessionComplete = (sessionStats) => {
     // Open the activity modal with pre-filled data
     setModalOpen(true);
     
     // Pre-fill the activity data when the modal opens
-    // You can implement this by adding a state variable to store prefilledData
-    // and passing it to the ActivityModal component
     setPrefilledActivityData({
       type: 'Walking',
       steps: sessionStats.steps,
       distance: sessionStats.distance,
       symmetry: sessionStats.symmetry,
-      duration: Math.round(sessionStats.duration / 60) // Convert seconds to minutes
+      duration: Math.round(sessionStats.duration / 60)
     });
   };
 
-  const stats = calculateStats();
+  // Using the stats variable by displaying it in the UI
+  const currentStats = calculateStats();
 
   return (
     <div className="patient-home">
@@ -167,40 +128,44 @@ function PatientHome() {
           >
             {showMock ? 'Show My Data' : 'Show Demo Data'}
           </Button>
-          <Button
-            variant={showTracker ? 'secondary' : 'primary'}
-            onClick={() => setShowTracker((prev) => !prev)}
-          >
-            {showTracker ? 'Hide Tracker' : 'Show Tracker'}
-          </Button>
         </div>
       </div>
       
-      {/* Conditionally render the step tracker */}
-      {showTracker && (
-        <StepTracker 
-          onSessionComplete={handleActivitySessionComplete}
-          userSettings={{ 
-            height: user?.height || 170,
-            gender: user?.gender || 'neutral',
-            stepGoal: user?.stepGoal || 10000
-          }} 
-        />
-      )}
+      {/* Display stats for today */}
+      <div className="stats-cards">
+        <Card className="stat-card">
+          <div className="stat-value">{currentStats.steps}</div>
+          <div className="stat-label">Today's Steps</div>
+        </Card>
+        
+        <Card className="stat-card">
+          <div className="stat-value">{currentStats.symmetry}</div>
+          <div className="stat-label">Gait Symmetry</div>
+        </Card>
+        
+        <Card className="stat-card">
+          <div className="stat-value">{currentStats.distance}</div>
+          <div className="stat-label">Distance</div>
+        </Card>
+        
+        <Card className="stat-card">
+          <div className="stat-value">{currentStats.duration}</div>
+          <div className="stat-label">Exercise Time</div>
+        </Card>
+      </div>
+      
+      {/* Always display the step tracker */}
+      <StepTracker 
+        onSessionComplete={handleActivitySessionComplete}
+        userSettings={{ 
+          height: user?.height || 170,
+          gender: user?.gender || 'neutral',
+          stepGoal: user?.stepGoal || 10000
+        }} 
+      />
       
       <div className="dashboard-content">
         <div className="content-left">
-          {!showTracker && (
-            <StepTracker 
-              onSessionComplete={handleActivitySessionComplete} 
-              userSettings={{ 
-                height: user?.height || 170,
-                gender: user?.gender || 'neutral',
-                stepGoal: user?.stepGoal || 10000
-              }} 
-            />
-          )}
-          
           <Card className="chart-card">
             <ProgressChart activities={activities} />
           </Card>
@@ -226,7 +191,6 @@ function PatientHome() {
             </Card>
           )}
           
-          {/* Add achievements section */}
           <Card className="achievements-card">
             <h3>Recent Achievements</h3>
             {user && <AchievementsList userId={user.uid} limit={3} />}
@@ -237,12 +201,11 @@ function PatientHome() {
         </div>
       </div>
 
-      {/* Activity Modal with onActivityAdded callback */}
       <ActivityModal 
         isOpen={modalOpen} 
         onClose={() => setModalOpen(false)}
         onActivityAdded={handleActivityAdded}
-        prefilledData={prefilledActivityData} // Pass prefilled data to the modal
+        prefilledData={prefilledActivityData}
       />
     </div>
   );
