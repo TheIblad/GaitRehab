@@ -342,7 +342,7 @@ function AppContent() {
 function App() {
   return (
     <AuthProvider> {/* AuthProvider wraps Router */}
-      <Router> {/* Router now wraps AppContent */}
+      <Router basename="/GaitRehab"> {/* Add basename for GitHub Pages */}
         <AppContent />
       </Router>
     </AuthProvider>

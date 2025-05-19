@@ -7,8 +7,8 @@ import { estimateStepLength } from '../utils/sensorUtils';
  */
 const useStepCounter = (options = {}) => {
   const {
-    stepThreshold = 15.0,      // Increased threshold to reduce false positives
-    stepCooldown = 500,        // Increased cooldown to prevent rapid counting
+    stepThreshold = 20.0,      // Increased threshold significantly to reduce false positives
+    stepCooldown = 800,        // Increased cooldown to prevent rapid counting
     userHeight = 170,          // User height in cm for step length calculation
     userGender = 'neutral',    // User gender for step length calculation
     filterCoefficient = 0.3,   // Low-pass filter coefficient
@@ -30,6 +30,9 @@ const useStepCounter = (options = {}) => {
   const stepTimeHistory = useRef([]);
   const startTime = useRef(null);
   const stepLengthMeters = useRef(estimateStepLength(userHeight, userGender));
+  const lastMagnitude = useRef(9.8); // Track last magnitude for peak detection
+  const isPeak = useRef(false); // Track if we're in a peak
+  const motionBuffer = useRef([]); // Buffer to detect actual motion
   
   // Use the accelerometer hook
   const {
@@ -52,22 +55,34 @@ const useStepCounter = (options = {}) => {
     const now = Date.now();
     const { magnitude } = acceleration;
     
+    // Add to motion buffer
+    motionBuffer.current.push(magnitude);
+    if (motionBuffer.current.length > 10) {
+      motionBuffer.current.shift();
+    }
+    
+    // Calculate motion variance
+    const motionVariance = calculateVariance(motionBuffer.current);
+    const isInMotion = motionVariance > 0.5; // Threshold for motion detection
+    
     // Check if we're past the cooldown period
     const timeSinceLastStep = now - lastStepTime.current;
     
-    if (timeSinceLastStep > stepCooldown) {
-      // Enhanced peak detection with additional checks
-      if (magnitude > stepThreshold) {
+    if (timeSinceLastStep > stepCooldown && isInMotion) {
+      // Enhanced peak detection
+      if (magnitude > stepThreshold && !isPeak.current) {
         // Check if this is a significant enough change from previous readings
-        const isSignificantChange = Math.abs(magnitude - 9.8) > 5; // Must deviate significantly from gravity
+        const isSignificantChange = Math.abs(magnitude - lastMagnitude.current) > 8;
         
         if (isSignificantChange) {
+          isPeak.current = true;
+          
           // Increment step count
           setSteps(prevSteps => {
             const newSteps = prevSteps + 1;
             
-            // Update distance based on step length
-            const newDistance = newSteps * stepLengthMeters.current;
+            // Update distance based on step length (in meters)
+            const newDistance = (newSteps * stepLengthMeters.current) / 1000; // Convert to km
             setDistance(newDistance);
             
             // Record step interval for cadence calculation
@@ -96,7 +111,6 @@ const useStepCounter = (options = {}) => {
               }
               
               // Calculate symmetry from step intervals
-              // This is a simplified approach - real gait asymmetry needs more complex analysis
               if (stepTimeHistory.current.length >= 6) {
                 calculateSymmetry();
               }
@@ -117,9 +131,21 @@ const useStepCounter = (options = {}) => {
           // Update last step time
           lastStepTime.current = now;
         }
+      } else if (magnitude < stepThreshold) {
+        isPeak.current = false;
       }
     }
+    
+    // Update last magnitude
+    lastMagnitude.current = magnitude;
   }, [acceleration, isActive, isRunning, onStepDetected, stepCooldown, stepThreshold]);
+
+  // Helper function to calculate variance
+  const calculateVariance = (values) => {
+    const mean = values.reduce((a, b) => a + b, 0) / values.length;
+    const squaredDiffs = values.map(value => Math.pow(value - mean, 2));
+    return squaredDiffs.reduce((a, b) => a + b, 0) / values.length;
+  };
   
   // Calculate gait symmetry from step intervals
   const calculateSymmetry = () => {
