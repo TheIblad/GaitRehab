@@ -17,7 +17,6 @@ const StepTracker = ({ onSessionComplete, userSettings = {} }) => {
   const [elapsedTime, setElapsedTime] = useState(0);
   const [showPermissionPrompt, setShowPermissionPrompt] = useState(false);
   const [permissionDenied, setPermissionDenied] = useState(false);
-  const [localIsAvailable, setLocalIsAvailable] = useState(true); // Add this state variable
   
   // Timer ref
   const timerRef = useRef(null);
@@ -44,35 +43,21 @@ const StepTracker = ({ onSessionComplete, userSettings = {} }) => {
   
   // Check for sensor permission on mount
   useEffect(() => {
-    const checkPermissions = async () => {
-      try {
-        // First try to use DeviceMotion as it's more widely supported
-        if ('DeviceMotionEvent' in window) {
-          setLocalIsAvailable(true); // Use localIsAvailable instead
-        }
-        
-        // Then try Accelerometer API
-        if ('permissions' in navigator) {
-          try {
-            const result = await navigator.permissions.query({ name: 'accelerometer' });
-            if (result.state === 'prompt') {
-              setShowPermissionPrompt(true);
-            } else if (result.state === 'denied') {
-              setPermissionDenied(true);
-            }
-          } catch (err) {
-            // permissions API might throw if accelerometer permission name is not supported
-            console.warn('Could not query accelerometer permission:', err);
+    if ('permissions' in navigator) {
+      navigator.permissions.query({ name: 'accelerometer' })
+        .then(result => {
+          if (result.state === 'prompt') {
+            setShowPermissionPrompt(true);
+          } else if (result.state === 'denied') {
+            setPermissionDenied(true);
           }
-        }
-      } catch (err) {
-        console.warn('Could not check permissions:', err);
-        // If permission check fails, assume sensors are available
-        setLocalIsAvailable(true); // Use localIsAvailable instead
-      }
-    };
-    
-    checkPermissions();
+        })
+        .catch(err => {
+          console.warn('Could not check permissions:', err);
+          // If permission check fails, we'll try to use the sensor anyway
+          // and let the browser handle permission prompts
+        });
+    }
   }, []);
   
   // Start tracking function
@@ -187,22 +172,22 @@ const StepTracker = ({ onSessionComplete, userSettings = {} }) => {
       <h3>Step Tracker</h3>
       
       <div className="tracker-metrics">
-        <div className="metric-item">
+        <div className="tracker-metric-item">
           <div className="metric-value">{steps.toLocaleString()}</div>
           <div className="metric-label">Steps</div>
         </div>
         
-        <div className="metric-item">
+        <div className="tracker-metric-item">
           <div className="metric-value">{distance.toFixed(2)}</div>
           <div className="metric-label">Distance (km)</div>
         </div>
         
-        <div className="metric-item">
+        <div className="tracker-metric-item">
           <div className="metric-value">{cadence || 0}</div>
           <div className="metric-label">Steps/min</div>
         </div>
         
-        <div className="metric-item">
+        <div className="tracker-metric-item">
           <div className="metric-value">{symmetry || 0}%</div>
           <div className="metric-label">Symmetry</div>
         </div>
@@ -232,19 +217,12 @@ const StepTracker = ({ onSessionComplete, userSettings = {} }) => {
         </div>
       )}
       
-      <div className="tracker-controls" style={{ display: 'flex', marginTop: '20px' }}>
+      <div className="tracker-controls">
         {!isTracking ? (
           <Button 
             variant="primary" 
             className="tracker-start-btn"
             onClick={handleStartTracking}
-            style={{ 
-              width: '100%', 
-              padding: '12px 20px',
-              fontSize: '16px',
-              fontWeight: 'bold',
-              zIndex: 5  // Ensure it's above other elements
-            }}
           >
             Start Tracking
           </Button>
@@ -254,12 +232,6 @@ const StepTracker = ({ onSessionComplete, userSettings = {} }) => {
               variant="danger" 
               className="tracker-stop-btn"
               onClick={handleStopTracking}
-              style={{ 
-                flex: 1,
-                padding: '12px 20px',
-                fontSize: '16px',
-                fontWeight: 'bold'  
-              }}
             >
               Stop & Save
             </Button>
@@ -267,11 +239,6 @@ const StepTracker = ({ onSessionComplete, userSettings = {} }) => {
               variant="secondary" 
               className="tracker-reset-btn"
               onClick={handleResetTracking}
-              style={{ 
-                flex: 1,
-                padding: '12px 20px',
-                fontSize: '16px'
-              }}
             >
               Reset
             </Button>

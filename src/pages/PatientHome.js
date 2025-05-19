@@ -21,6 +21,7 @@ function PatientHome() {
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showMock, setShowMock] = useState(false);
+  const [showTracker, setShowTracker] = useState(false); // State to toggle the tracker
   const [prefilledActivityData, setPrefilledActivityData] = useState(null); // State to store prefilled activity data
 
   // Function to load activities data
@@ -166,20 +167,39 @@ function PatientHome() {
           >
             {showMock ? 'Show My Data' : 'Show Demo Data'}
           </Button>
+          <Button
+            variant={showTracker ? 'secondary' : 'primary'}
+            onClick={() => setShowTracker((prev) => !prev)}
+          >
+            {showTracker ? 'Hide Tracker' : 'Show Tracker'}
+          </Button>
         </div>
       </div>
       
+      {/* Conditionally render the step tracker */}
+      {showTracker && (
+        <StepTracker 
+          onSessionComplete={handleActivitySessionComplete}
+          userSettings={{ 
+            height: user?.height || 170,
+            gender: user?.gender || 'neutral',
+            stepGoal: user?.stepGoal || 10000
+          }} 
+        />
+      )}
+      
       <div className="dashboard-content">
         <div className="content-left">
-          {/* Always show StepTracker - no conditional rendering */}
-          <StepTracker 
-            onSessionComplete={handleActivitySessionComplete}
-            userSettings={{ 
-              height: user?.height || 170,
-              gender: user?.gender || 'neutral',
-              stepGoal: user?.stepGoal || 10000
-            }} 
-          />
+          {!showTracker && (
+            <StepTracker 
+              onSessionComplete={handleActivitySessionComplete} 
+              userSettings={{ 
+                height: user?.height || 170,
+                gender: user?.gender || 'neutral',
+                stepGoal: user?.stepGoal || 10000
+              }} 
+            />
+          )}
           
           <Card className="chart-card">
             <ProgressChart activities={activities} />
@@ -189,20 +209,40 @@ function PatientHome() {
           </Card>
         </div>
         <div className="content-right">
-          <Card className="activities-card">
-            <RecentActivities activities={activities} loading={loading} />
+          {showMock && (
+            <Card className="activities-card">
+              <RecentActivities activities={activities} loading={loading} />
+            </Card>
+          )}
+          {!showMock && (
+            <Card className="activities-card">
+              {loading ? (
+                <p>Loading activities...</p>
+              ) : activities.length > 0 ? (
+                <RecentActivities activities={activities} />
+              ) : (
+                <p>No activities found. Start logging your progress!</p>
+              )}
+            </Card>
+          )}
+          
+          {/* Add achievements section */}
+          <Card className="achievements-card">
+            <h3>Recent Achievements</h3>
+            {user && <AchievementsList userId={user.uid} limit={3} />}
+            <div className="view-all-achievements">
+              <Link to="/achievements" className="view-all-link">View All Achievements</Link>
+            </div>
           </Card>
         </div>
       </div>
 
+      {/* Activity Modal with onActivityAdded callback */}
       <ActivityModal 
         isOpen={modalOpen} 
-        onClose={() => {
-          setModalOpen(false);
-          setPrefilledActivityData(null); // Clear prefilled data when closing
-        }}
+        onClose={() => setModalOpen(false)}
         onActivityAdded={handleActivityAdded}
-        prefilledData={prefilledActivityData}
+        prefilledData={prefilledActivityData} // Pass prefilled data to the modal
       />
     </div>
   );

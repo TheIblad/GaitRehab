@@ -14,6 +14,8 @@ const AccelerometerClass = typeof window !== 'undefined' ?
 
 /**
  * Hook to access device accelerometer data
+ * @param {Object} options - Configuration options
+ * @returns {Object} Accelerometer data and control functions
  */
 const useAccelerometer = (options = {}) => {
   const {
@@ -49,15 +51,13 @@ const useAccelerometer = (options = {}) => {
           // Request permission if needed
           await requestAccelerometerPermission();
           
-          // Create accelerometer instance
+          // Check for Accelerometer class
           if (AccelerometerClass) {
             sensor.current = new AccelerometerClass({ frequency });
-          } else if (useDeviceMotionFallback) {
-            // If Sensor API is not available, fall back to DeviceMotion
-            initDeviceMotionFallback();
-            return;
           } else {
-            throw new Error('Accelerometer API not supported.');
+            // Use the mock implementation as fallback
+            sensor.current = new MockAccelerometer({ frequency });
+            setUsingFallback(true);
           }
           
           // Set up error handler
@@ -132,19 +132,16 @@ const useAccelerometer = (options = {}) => {
 
     // Initialize devicemotion fallback
     const initDeviceMotionFallback = () => {
-      console.log("Using DeviceMotion fallback");
       setUsingFallback(true);
       
       // Create device motion handler
       deviceMotionListener.current = (event) => {
-        if (!event.accelerationIncludingGravity) return;
-        
         const { x, y, z } = event.accelerationIncludingGravity || { x: 0, y: 0, z: 0 };
         
         // Apply low-pass filter
-        const filteredX = applyLowPassFilter(x || 0, previousValues.current.x, filterCoefficient);
-        const filteredY = applyLowPassFilter(y || 0, previousValues.current.y, filterCoefficient);
-        const filteredZ = applyLowPassFilter(z || 0, previousValues.current.z, filterCoefficient);
+        const filteredX = applyLowPassFilter(x, previousValues.current.x, filterCoefficient);
+        const filteredY = applyLowPassFilter(y, previousValues.current.y, filterCoefficient);
+        const filteredZ = applyLowPassFilter(z, previousValues.current.z, filterCoefficient);
         
         // Update previous values
         previousValues.current = { x: filteredX, y: filteredY, z: filteredZ };
@@ -174,16 +171,14 @@ const useAccelerometer = (options = {}) => {
     
     // Cleanup function
     return () => {
-      if (isRunning) {
-        stop();
-      }
+      stop();
       
       if (deviceMotionListener.current) {
         window.removeEventListener('devicemotion', deviceMotionListener.current);
         deviceMotionListener.current = null;
       }
     };
-  }, [enabled, frequency, filterCoefficient, useDeviceMotionFallback, isRunning]);
+  }, [enabled, frequency, filterCoefficient, useDeviceMotionFallback]);
 
   // Start accelerometer readings
   const start = useCallback(() => {

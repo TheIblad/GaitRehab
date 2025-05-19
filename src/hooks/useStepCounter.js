@@ -7,11 +7,11 @@ import { estimateStepLength } from '../utils/sensorUtils';
  */
 const useStepCounter = (options = {}) => {
   const {
-    stepThreshold = 11.0,      // Threshold to detect a step
-    stepCooldown = 250,        // Minimum time between steps in ms
+    stepThreshold = 15.0,      // Increased threshold to reduce false positives
+    stepCooldown = 500,        // Increased cooldown to prevent rapid counting
     userHeight = 170,          // User height in cm for step length calculation
     userGender = 'neutral',    // User gender for step length calculation
-    filterCoefficient = 0.2,   // Low-pass filter coefficient
+    filterCoefficient = 0.3,   // Low-pass filter coefficient
     onStepDetected = null,     // Callback when a step is detected
     enabled = true            // Whether the step counter is enabled
   } = options;
@@ -30,9 +30,6 @@ const useStepCounter = (options = {}) => {
   const stepTimeHistory = useRef([]);
   const startTime = useRef(null);
   const stepLengthMeters = useRef(estimateStepLength(userHeight, userGender));
-  const lastMagnitude = useRef(9.8); // Track last magnitude for peak detection
-  const isPeak = useRef(false); // Track if we're in a peak
-  const motionBuffer = useRef([]); // Buffer to detect actual motion
   
   // Use the accelerometer hook
   const {
@@ -48,14 +45,6 @@ const useStepCounter = (options = {}) => {
     enabled
   });
   
-  // Helper function to calculate variance
-  const calculateVariance = (values) => {
-    if (!values || values.length <= 1) return 0;
-    const mean = values.reduce((a, b) => a + b, 0) / values.length;
-    const squaredDiffs = values.map(value => Math.pow(value - mean, 2));
-    return squaredDiffs.reduce((a, b) => a + b, 0) / values.length;
-  };
-  
   // Step detection algorithm
   useEffect(() => {
     if (!isActive || !isRunning) return;
@@ -63,88 +52,73 @@ const useStepCounter = (options = {}) => {
     const now = Date.now();
     const { magnitude } = acceleration;
     
-    // Add to motion buffer
-    motionBuffer.current.push(magnitude);
-    if (motionBuffer.current.length > 10) {
-      motionBuffer.current.shift();
-    }
-    
-    // Calculate motion variance to detect if the user is actually moving
-    const motionVariance = calculateVariance(motionBuffer.current);
-    const isInMotion = motionVariance > 0.15; // Lower threshold for better sensitivity
-    
     // Check if we're past the cooldown period
     const timeSinceLastStep = now - lastStepTime.current;
     
     if (timeSinceLastStep > stepCooldown) {
-      // Step detection with improved peak detection
-      if (magnitude > stepThreshold && magnitude > lastMagnitude.current && !isPeak.current) {
-        isPeak.current = true;
+      // Enhanced peak detection with additional checks
+      if (magnitude > stepThreshold) {
+        // Check if this is a significant enough change from previous readings
+        const isSignificantChange = Math.abs(magnitude - 9.8) > 5; // Must deviate significantly from gravity
         
-        // Increment step count
-        setSteps(prevSteps => {
-          const newSteps = prevSteps + 1;
-          
-          // Update distance based on step length
-          const newDistance = newSteps * stepLengthMeters.current;
-          setDistance(newDistance);
-          
-          // Record step interval for cadence calculation
-          if (lastStepTime.current > 0) {
-            const interval = timeSinceLastStep;
-            stepIntervals.current.push(interval);
+        if (isSignificantChange) {
+          // Increment step count
+          setSteps(prevSteps => {
+            const newSteps = prevSteps + 1;
             
-            // Keep last 10 intervals for calculations
-            if (stepIntervals.current.length > 10) {
-              stepIntervals.current.shift();
+            // Update distance based on step length
+            const newDistance = newSteps * stepLengthMeters.current;
+            setDistance(newDistance);
+            
+            // Record step interval for cadence calculation
+            if (lastStepTime.current > 0) {
+              stepIntervals.current.push(timeSinceLastStep);
+              
+              // Keep last 10 intervals for calculations
+              if (stepIntervals.current.length > 10) {
+                stepIntervals.current.shift();
+              }
+              
+              // Calculate cadence (steps per minute)
+              const avgInterval = stepIntervals.current.reduce((a, b) => a + b, 0) / stepIntervals.current.length;
+              const stepsPerMinute = Math.round(60000 / avgInterval);
+              setCadence(stepsPerMinute);
+              
+              // Record step time for symmetry analysis
+              stepTimeHistory.current.push({
+                timestamp: now,
+                interval: timeSinceLastStep
+              });
+              
+              // Keep last 20 steps for symmetry calculation
+              if (stepTimeHistory.current.length > 20) {
+                stepTimeHistory.current.shift();
+              }
+              
+              // Calculate symmetry from step intervals
+              // This is a simplified approach - real gait asymmetry needs more complex analysis
+              if (stepTimeHistory.current.length >= 6) {
+                calculateSymmetry();
+              }
             }
             
-            // Record step time for symmetry analysis
-            stepTimeHistory.current.push({
-              timestamp: now,
-              interval: interval
-            });
-            
-            // Keep last 20 steps for symmetry calculation
-            if (stepTimeHistory.current.length > 20) {
-              stepTimeHistory.current.shift();
+            // Fire callback if provided
+            if (onStepDetected) {
+              onStepDetected({
+                steps: newSteps,
+                distance: newDistance,
+                timestamp: now
+              });
             }
             
-            // Calculate cadence (steps per minute)
-            const avgInterval = stepIntervals.current.reduce((a, b) => a + b, 0) / stepIntervals.current.length;
-            const stepsPerMinute = Math.round(60000 / avgInterval);
-            setCadence(stepsPerMinute);
-            
-            // Calculate symmetry from step intervals
-            if (stepTimeHistory.current.length >= 6) {
-              calculateSymmetry();
-            }
-          }
+            return newSteps;
+          });
           
           // Update last step time
           lastStepTime.current = now;
-          
-          // Call the callback if provided
-          if (onStepDetected) {
-            onStepDetected({
-              steps: newSteps,
-              distance: newDistance,
-              timestamp: now
-            });
-          }
-          
-          console.log("Step detected!", newSteps);
-          return newSteps;
-        });
-      } 
-      // Important: Reset isPeak when magnitude drops below threshold
-      else if (magnitude < stepThreshold - 1) {
-        isPeak.current = false;
+        }
       }
     }
-    
-    // Update last magnitude
-    lastMagnitude.current = magnitude;
   }, [acceleration, isActive, isRunning, onStepDetected, stepCooldown, stepThreshold]);
   
   // Calculate gait symmetry from step intervals
@@ -179,7 +153,6 @@ const useStepCounter = (options = {}) => {
     lastStepTime.current = 0;
     stepIntervals.current = [];
     stepTimeHistory.current = [];
-    isPeak.current = false;
     
     // Reset counters
     setSteps(0);
@@ -216,7 +189,7 @@ const useStepCounter = (options = {}) => {
   const getSessionStats = useCallback(() => {
     return {
       steps,
-      distance: parseFloat(distance.toFixed(2)),
+      distance: distance.toFixed(2),
       cadence,
       symmetry,
       duration: getSessionDuration(),
