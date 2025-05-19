@@ -16,6 +16,7 @@ import Settings from './pages/Settings';
 import Progress from './pages/Progress';
 import Contacts from './pages/Contacts';
 import PatientDetails from './pages/PatientDetails';
+import Achievements from './pages/Achievements';
 
 // Import Global Styles
 import './index.css';
@@ -244,6 +245,11 @@ function AppContent() {
                   </Link>
                 </li>
                 <li>
+                  <Link to="/achievements" onClick={() => setMenuOpen(false)}>
+                    Achievements
+                  </Link>
+                </li>
+                <li>
                   <button onClick={handleSignOut} className="signout-btn">
                     Sign Out
                   </button>
@@ -318,6 +324,10 @@ function AppContent() {
           <Route
             path="/settings"
             element={user ? <Settings /> : <Navigate to="/login" />}
+          />
+          <Route
+            path="/achievements"
+            element={user ? <Achievements /> : <Navigate to="/login" />}
           />
 
           {/* Catch-all for Not Found */}

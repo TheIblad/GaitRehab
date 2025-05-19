@@ -7,6 +7,7 @@ import RecentActivities from '../components/patient/RecentActivities';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import { mockPatients } from '../mock/mockTherapistData';
+import AchievementsList from '../components/patient/AchievementsList';
 import './PatientDetails.css';
 
 function PatientDetails() {
@@ -17,6 +18,7 @@ function PatientDetails() {
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showMock, setShowMock] = useState(true); // Default to true to show mock data
+  const [activeTab, setActiveTab] = useState('activities');
   
   // Added for chart filtering
   const [timeRange, setTimeRange] = useState('week');
@@ -478,6 +480,63 @@ function PatientDetails() {
               <RecentActivities activities={filteredActivities} loading={false} />
             </Card>
           </div>
+        </div>
+      </div>
+      
+      <div className="patient-details-tabs">
+        <div className="tabs">
+          <button 
+            className={`tab ${activeTab === 'activities' ? 'active' : ''}`}
+            onClick={() => setActiveTab('activities')}
+          >
+            Activities
+          </button>
+          <button 
+            className={`tab ${activeTab === 'progress' ? 'active' : ''}`}
+            onClick={() => setActiveTab('progress')}
+          >
+            Progress
+          </button>
+          <button 
+            className={`tab ${activeTab === 'achievements' ? 'active' : ''}`}
+            onClick={() => setActiveTab('achievements')}
+          >
+            Achievements
+          </button>
+        </div>
+        
+        <div className="tab-content">
+          {activeTab === 'activities' && (
+            <div className="activities-tab">
+              <h3>Recent Activities</h3>
+              {activities.length > 0 ? (
+                <RecentActivities activities={activities} />
+              ) : (
+                <p>No activities recorded yet.</p>
+              )}
+            </div>
+          )}
+          
+          {activeTab === 'progress' && (
+            <div className="progress-tab">
+              <h3>Progress Charts</h3>
+              <div className="charts-container">
+                <Card className="chart-card">
+                  <ProgressChart activities={activities} />
+                </Card>
+                <Card className="chart-card">
+                  <CalendarHeatmap activities={activities} />
+                </Card>
+              </div>
+            </div>
+          )}
+          
+          {activeTab === 'achievements' && (
+            <div className="achievements-tab">
+              <h3>Patient Achievements</h3>
+              {patientId && <AchievementsList userId={patientId} />}
+            </div>
+          )}
         </div>
       </div>
     </div>

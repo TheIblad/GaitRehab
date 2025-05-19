@@ -85,6 +85,12 @@ function RecentActivities({ activities = [], loading = false }) {
                   <span>{activity.symmetry}% symmetry</span>
                 </div>
               )}
+              {activity.cadence && (
+                <div className="activity-detail">
+                  <span className="detail-icon">🏃</span>
+                  <span>{activity.cadence} steps/min</span>
+                </div>
+              )}
               {activity.location && (
                 <div className="activity-detail">
                   <span className="detail-icon">📍</span>

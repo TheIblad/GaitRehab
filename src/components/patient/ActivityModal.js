@@ -1,201 +1,231 @@
-import React, { useState } from 'react';
-import Button from '../common/Button';
+import React, { useState, useEffect } from 'react';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import { useAuth } from '../../contexts/AuthContext';
+import { checkActivityAchievements } from '../../utils/achievementUtils';
+import AchievementModal from './AchievementModal';
 import './ActivityModal.css';
 
-function ActivityModal({ isOpen, onClose, onActivityAdded }) {
+const ActivityModal = ({ isOpen, onClose, onActivityAdded, prefilledData }) => {
   const { user } = useAuth();
+  const [activityType, setActivityType] = useState('Walking');
+  const [duration, setDuration] = useState('');
+  const [steps, setSteps] = useState('');
+  const [distance, setDistance] = useState('');
+  const [notes, setNotes] = useState('');
+  const [symmetry, setSymmetry] = useState('');
   const [loading, setLoading] = useState(false);
-  const [activity, setActivity] = useState({
-    type: 'Walking',
-    duration: '',
-    steps: '',
-    distance: '',
-    symmetry: '',
-    location: '',
-    notes: ''
-  });
+  const [error, setError] = useState('');
+  const [newAchievement, setNewAchievement] = useState(null);
+  const [showAchievementModal, setShowAchievementModal] = useState(false);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setActivity({
-      ...activity,
-      [name]: name === 'steps' || name === 'symmetry' || name === 'duration' 
-        ? value === '' ? '' : Number(value)
-        : value
-    });
-  };
+  // Reset form when modal is opened/closed
+  useEffect(() => {
+    if (isOpen) {
+      // If we have prefilled data, use it
+      if (prefilledData) {
+        setActivityType(prefilledData.type || 'Walking');
+        setDuration(prefilledData.duration?.toString() || '');
+        setSteps(prefilledData.steps?.toString() || '');
+        setDistance(prefilledData.distance?.toString() || '');
+        setSymmetry(prefilledData.symmetry?.toString() || '');
+        setNotes(prefilledData.notes || '');
+      } else {
+        // Otherwise reset to defaults
+        setActivityType('Walking');
+        setDuration('');
+        setSteps('');
+        setDistance('');
+        setSymmetry('');
+        setNotes('');
+      }
+      setError('');
+    }
+  }, [isOpen, prefilledData]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+    
     if (!user) {
-      console.error('No user logged in');
+      setError('You must be logged in to add activities');
       return;
     }
-
+    
     setLoading(true);
-
+    setError('');
+    
     try {
+      // Prepare activity data
       const activityData = {
         uid: user.uid,
         timestamp: serverTimestamp(),
-        ...activity,
+        type: activityType,
+        duration: parseInt(duration) || 0,
+        steps: parseInt(steps) || 0,
+        distance: parseFloat(distance) || 0,
+        symmetry: parseInt(symmetry) || 0,
+        notes
       };
-
-      console.log('Attempting to save activity data:', activityData);
-
+      
+      // Add to Firestore
       const docRef = await addDoc(collection(db, 'activities'), activityData);
-      console.log('Document written with ID:', docRef.id);
-
-      setActivity({
-        type: 'Walking',
-        duration: '',
-        steps: '',
-        distance: '',
-        symmetry: '',
-        location: '',
-        notes: '',
-      });
-
+      console.log('Activity added with ID:', docRef.id);
+      
+      // Check for achievements
+      const achievements = await checkActivityAchievements(user.uid, activityData);
+      
+      // If new achievements were earned, show the modal
+      if (achievements && achievements.length > 0) {
+        setNewAchievement(achievements[0]);
+        setShowAchievementModal(true);
+      }
+      
+      // Call the callback if provided
       if (onActivityAdded) {
         onActivityAdded();
       }
-
-      onClose();
+      
+      // Close the modal if no achievements to show
+      if (!achievements || achievements.length === 0) {
+        onClose();
+      }
     } catch (error) {
-      console.error('Error adding activity:', error.message);
-      alert(`Failed to save activity. Error: ${error.message}`);
+      console.error('Error adding activity:', error);
+      setError('Failed to add activity. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
+  // Close the achievement modal and then the activity modal
+  const handleAchievementModalClose = () => {
+    setShowAchievementModal(false);
+    onClose();
+  };
+
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay">
-      <div className="activity-modal">
-        <div className="modal-header">
-          <h3>Log New Activity</h3>
-          <button className="close-button" onClick={onClose}>×</button>
-        </div>
-        
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label htmlFor="type">Activity Type</label>
-            <select 
-              id="type" 
-              name="type" 
-              value={activity.type} 
-              onChange={handleChange}
-              required
-            >
-              <option value="Walking">Walking</option>
-              <option value="Exercise Routine">Exercise Routine</option>
-              <option value="Physiotherapy Session">Physiotherapy Session</option>
-              <option value="Gait Training">Gait Training</option>
-              <option value="Balance Exercise">Balance Exercise</option>
-            </select>
+    <>
+      <div className="modal-overlay" onClick={onClose}>
+        <div className="modal" onClick={e => e.stopPropagation()}>
+          <div className="modal-header">
+            <h2>Log Activity</h2>
+            <button className="close-button" onClick={onClose}>×</button>
           </div>
           
-          <div className="form-group">
-            <label htmlFor="duration">Duration (minutes)</label>
-            <input 
-              type="number" 
-              id="duration" 
-              name="duration"
-              min="1" 
-              max="300"
-              value={activity.duration} 
-              onChange={handleChange}
-              required
-            />
-          </div>
-          
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="steps">Steps</label>
-              <input 
-                type="number" 
-                id="steps" 
-                name="steps"
-                min="0"
-                value={activity.steps} 
-                onChange={handleChange}
-              />
+          <form onSubmit={handleSubmit}>
+            <div className="modal-body">
+              <div className="form-group">
+                <label htmlFor="activityType">Activity Type</label>
+                <select
+                  id="activityType"
+                  value={activityType}
+                  onChange={e => setActivityType(e.target.value)}
+                  required
+                >
+                  <option value="Walking">Walking</option>
+                  <option value="Running">Running</option>
+                  <option value="Cycling">Cycling</option>
+                  <option value="Swimming">Swimming</option>
+                  <option value="Physiotherapy">Physiotherapy</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              
+              <div className="form-group">
+                <label htmlFor="duration">Duration (minutes)</label>
+                <input
+                  id="duration"
+                  type="number"
+                  value={duration}
+                  onChange={e => setDuration(e.target.value)}
+                  placeholder="Duration in minutes"
+                  required
+                />
+              </div>
+              
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="steps">Steps</label>
+                  <input
+                    id="steps"
+                    type="number"
+                    value={steps}
+                    onChange={e => setSteps(e.target.value)}
+                    placeholder="Number of steps"
+                  />
+                </div>
+                
+                <div className="form-group">
+                  <label htmlFor="distance">Distance (km)</label>
+                  <input
+                    id="distance"
+                    type="number"
+                    step="0.01"
+                    value={distance}
+                    onChange={e => setDistance(e.target.value)}
+                    placeholder="Distance in km"
+                  />
+                </div>
+              </div>
+              
+              <div className="form-group">
+                <label htmlFor="symmetry">Gait Symmetry (%)</label>
+                <input
+                  id="symmetry"
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={symmetry}
+                  onChange={e => setSymmetry(e.target.value)}
+                  placeholder="Symmetry percentage"
+                />
+              </div>
+              
+              <div className="form-group">
+                <label htmlFor="notes">Notes</label>
+                <textarea
+                  id="notes"
+                  value={notes}
+                  onChange={e => setNotes(e.target.value)}
+                  placeholder="Add notes about your activity"
+                  rows="3"
+                ></textarea>
+              </div>
+              
+              {error && <div className="error-message">{error}</div>}
             </div>
             
-            <div className="form-group">
-              <label htmlFor="distance">Distance (km)</label>
-              <input 
-                type="text" 
-                id="distance" 
-                name="distance" 
-                value={activity.distance} 
-                onChange={handleChange}
-                placeholder="e.g. 2.5"
-              />
+            <div className="modal-footer">
+              <button 
+                type="button" 
+                className="cancel-button" 
+                onClick={onClose}
+                disabled={loading}
+              >
+                Cancel
+              </button>
+              <button 
+                type="submit" 
+                className="save-button"
+                disabled={loading}
+              >
+                {loading ? 'Saving...' : 'Save Activity'}
+              </button>
             </div>
-          </div>
-          
-          <div className="form-group">
-            <label htmlFor="symmetry">Gait Symmetry (%)</label>
-            <input 
-              type="number" 
-              id="symmetry" 
-              name="symmetry"
-              min="0"
-              max="100"
-              value={activity.symmetry} 
-              onChange={handleChange}
-            />
-          </div>
-          
-          <div className="form-group">
-            <label htmlFor="location">Location</label>
-            <input 
-              type="text" 
-              id="location" 
-              name="location" 
-              value={activity.location} 
-              onChange={handleChange}
-            />
-          </div>
-          
-          <div className="form-group">
-            <label htmlFor="notes">Notes</label>
-            <textarea 
-              id="notes" 
-              name="notes" 
-              rows="3"
-              value={activity.notes} 
-              onChange={handleChange}
-            ></textarea>
-          </div>
-          
-          <div className="button-group">
-            <Button 
-              type="button" 
-              variant="secondary" 
-              onClick={onClose}
-            >
-              Cancel
-            </Button>
-            <Button 
-              type="submit" 
-              variant="primary"
-              disabled={loading}
-            >
-              {loading ? "Saving..." : "Save Activity"}
-            </Button>
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
-    </div>
+      
+      {/* Achievement Modal */}
+      <AchievementModal
+        isOpen={showAchievementModal}
+        onClose={handleAchievementModalClose}
+        achievement={newAchievement}
+      />
+    </>
   );
-}
+};
 
 export default ActivityModal;

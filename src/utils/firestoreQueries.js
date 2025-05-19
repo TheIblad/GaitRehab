@@ -5,6 +5,8 @@ import {
   getDocs, 
   doc, 
   getDoc,
+  addDoc,
+  serverTimestamp,
   orderBy
 } from "firebase/firestore";
 import { db } from "../firebase/config";
@@ -125,5 +127,58 @@ export async function fetchMessages(userId, partnerId) {
   } catch (error) {
     console.error("Error fetching messages:", error);
     return [];
+  }
+}
+
+// Add this new function:
+export async function addActivity(activityData) {
+  try {
+    // Add timestamp if not provided
+    if (!activityData.timestamp) {
+      activityData.timestamp = serverTimestamp();
+    }
+    
+    const docRef = await addDoc(collection(db, "activities"), activityData);
+    console.log("Activity added with ID: ", docRef.id);
+    return { id: docRef.id, ...activityData };
+  } catch (error) {
+    console.error("Error adding activity:", error);
+    throw error;
+  }
+}
+
+// Add achievement for a user
+export async function addAchievement(userId, achievementData) {
+  try {
+    // Ensure we have the required fields
+    const achievement = {
+      uid: userId,
+      earnedAt: serverTimestamp(),
+      ...achievementData
+    };
+    
+    const docRef = await addDoc(collection(db, "achievements"), achievement);
+    console.log("Achievement added with ID: ", docRef.id);
+    return { id: docRef.id, ...achievement };
+  } catch (error) {
+    console.error("Error adding achievement:", error);
+    throw error;
+  }
+}
+
+// Check if user already has a specific achievement by badge name
+export async function hasAchievement(userId, badgeName) {
+  try {
+    const achievementsQuery = query(
+      collection(db, "achievements"),
+      where("uid", "==", userId),
+      where("badgeName", "==", badgeName)
+    );
+    
+    const querySnapshot = await getDocs(achievementsQuery);
+    return !querySnapshot.empty;
+  } catch (error) {
+    console.error("Error checking achievement:", error);
+    return false;
   }
 }

@@ -209,3 +209,32 @@
   max-width: 100%;
   width: 100%;
 }
+
+.achievements-card {
+  margin-top: 20px;
+}
+
+.achievements-card h3 {
+  margin-bottom: 16px;
+  font-size: 1.2rem;
+  color: var(--text-primary);
+}
+
+.view-all-achievements {
+  margin-top: 16px;
+  text-align: center;
+}
+
+.view-all-link {
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: 500;
+  display: inline-block;
+  padding: 8px 16px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.view-all-link:hover {
+  background-color: rgba(var(--primary-rgb), 0.1);
+}

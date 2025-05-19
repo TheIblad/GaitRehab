@@ -1,0 +1,213 @@
+.achievement-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.achievement-modal {
+  background-color: var(--bg-card);
+  border-radius: 16px;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  animation: modalSlideIn 0.4s ease-out;
+  overflow: hidden;
+}
+
+.achievement-modal-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.achievement-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.achievement-modal-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: var(--text-primary);
+}
+
+.close-button {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: color 0.2s;
+}
+
+.close-button:hover {
+  color: var(--text-primary);
+}
+
+.achievement-modal-body {
+  padding: 32px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  position: relative;
+}
+
+.achievement-badge {
+  position: relative;
+  margin-bottom: 24px;
+}
+
+.badge-icon {
+  font-size: 4rem;
+  background: linear-gradient(135deg, #ffd700, #ffaa00);
+  border-radius: 50%;
+  width: 100px;
+  height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 5px 15px rgba(255, 215, 0, 0.3);
+  position: relative;
+  z-index: 2;
+  animation: badgePulse 2s infinite;
+}
+
+.badge-glow {
+  position: absolute;
+  top: -10px;
+  left: -10px;
+  right: -10px;
+  bottom: -10px;
+  background: radial-gradient(circle, rgba(255, 215, 0, 0.5) 0%, rgba(255, 215, 0, 0) 70%);
+  border-radius: 50%;
+  z-index: 1;
+  animation: glowPulse 2s infinite;
+}
+
+.achievement-title {
+  font-size: 1.5rem;
+  margin: 0 0 8px 0;
+  color: var(--text-primary);
+}
+
+.achievement-description {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.achievement-modal-footer {
+  padding: 16px 24px;
+  display: flex;
+  justify-content: center;
+  border-top: 1px solid var(--border-color);
+}
+
+.primary-button {
+  background-color: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 24px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.primary-button:hover {
+  background-color: var(--primary-dark);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modalSlideIn {
+  from {
+    transform: translateY(50px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes badgePulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes glowPulse {
+  0% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.1);
+  }
+  100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+}
+
+/* Confetti animation */
+.achievement-confetti {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  background-image: 
+    radial-gradient(circle, #ff0000 2px, transparent 2px),
+    radial-gradient(circle, #00ff00 2px, transparent 2px),
+    radial-gradient(circle, #0000ff 2px, transparent 2px),
+    radial-gradient(circle, #ffff00 2px, transparent 2px),
+    radial-gradient(circle, #00ffff 2px, transparent 2px),
+    radial-gradient(circle, #ff00ff 2px, transparent 2px);
+  background-size: 5% 5%, 7% 7%, 3% 3%, 5% 5%, 7% 7%, 3% 3%;
+  animation: confetti 10s linear infinite;
+  opacity: 0.3;
+}
+
+@keyframes confetti {
+  0% {
+    background-position: 
+      0% 0%, 0% 0%, 0% 0%,
+      0% 0%, 0% 0%, 0% 0%;
+  }
+  100% {
+    background-position: 
+      500px 500px, -500px 500px, 250px -250px,
+      -250px 250px, 400px -400px, -400px 400px;
+  }
+} 
