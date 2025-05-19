@@ -11,8 +11,16 @@ const AccelerometerClass = typeof window !== 'undefined' ?
  * @returns {boolean} Whether sensors are supported
  */
 export const isSensorsSupported = () => {
-  return typeof window !== 'undefined' && 
-    ('Accelerometer' in window || 'DeviceMotionEvent' in window);
+  // Check for Sensor API support
+  return typeof window !== 'undefined' && 'Accelerometer' in window;
+};
+
+/**
+ * Check if the browser supports DeviceMotionEvent as fallback
+ * @returns {boolean} Whether DeviceMotionEvent is supported
+ */
+export const isDeviceMotionSupported = () => {
+  return typeof window !== 'undefined' && 'DeviceMotionEvent' in window;
 };
 
 /**
@@ -20,7 +28,7 @@ export const isSensorsSupported = () => {
  * @returns {boolean} Whether permissions API is available
  */
 export const isPermissionsApiAvailable = () => {
-  return 'permissions' in navigator;
+  return typeof navigator !== 'undefined' && 'permissions' in navigator;
 };
 
 /**
@@ -28,6 +36,19 @@ export const isPermissionsApiAvailable = () => {
  * @returns {Promise<boolean>} Promise resolving to whether permission was granted
  */
 export const requestAccelerometerPermission = async () => {
+  // First check for iOS devicemotion permission (different mechanism)
+  if (typeof DeviceMotionEvent !== 'undefined' && 
+      typeof DeviceMotionEvent.requestPermission === 'function') {
+    try {
+      const permission = await DeviceMotionEvent.requestPermission();
+      return permission === 'granted';
+    } catch (err) {
+      console.error('Error requesting iOS DeviceMotion permission:', err);
+      // Continue to try the generic permission API
+    }
+  }
+  
+  // Then check regular permissions API
   if (!isPermissionsApiAvailable()) {
     // If permissions API isn't available, we'll have to assume permission
     // and catch errors when trying to use the sensor
@@ -115,14 +136,6 @@ export const estimateStepLength = (heightCm, gender = 'neutral') => {
   } else {
     return heightCm * 0.375 / 100; // Reduced from 0.414
   }
-};
-
-/**
- * Check if the browser supports DeviceMotionEvent as fallback
- * @returns {boolean} Whether DeviceMotionEvent is supported
- */
-export const isDeviceMotionSupported = () => {
-  return 'DeviceMotionEvent' in window;
 };
 
 /**

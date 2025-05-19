@@ -7,13 +7,13 @@ import { estimateStepLength } from '../utils/sensorUtils';
  */
 const useStepCounter = (options = {}) => {
   const {
-    stepThreshold = 15.0,      // Increased threshold to reduce false positives
-    stepCooldown = 500,        // Increased cooldown to prevent rapid counting
+    stepThreshold = 3.0,       // MUCH lower threshold for better sensitivity on mobile
+    stepCooldown = 250,        // Shorter cooldown to detect steps more frequently
     userHeight = 170,          // User height in cm for step length calculation
     userGender = 'neutral',    // User gender for step length calculation
-    filterCoefficient = 0.3,   // Low-pass filter coefficient
+    filterCoefficient = 0.5,   // Higher coefficient for faster response to changes
     onStepDetected = null,     // Callback when a step is detected
-    enabled = true            // Whether the step counter is enabled
+    enabled = true             // Whether the step counter is enabled
   } = options;
 
   // State

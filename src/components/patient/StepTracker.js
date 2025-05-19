@@ -69,6 +69,10 @@ const StepTracker = ({ onSessionComplete, userSettings = {} }) => {
   
   // Start tracking function
   const handleStartTracking = () => {
+    console.log("=== STARTING STEP TRACKING ===");
+    console.log("Sensor available:", isAvailable);
+    console.log("Using fallback:", usingFallback);
+    
     setIsTracking(true);
     setElapsedTime(0);
     start();
@@ -76,6 +80,15 @@ const StepTracker = ({ onSessionComplete, userSettings = {} }) => {
     // Start the timer
     timerRef.current = setInterval(() => {
       setElapsedTime(prev => prev + 1);
+    }, 1000);
+    
+    // Log sensor status after a short delay
+    setTimeout(() => {
+      console.log("Tracking status after 1 second:");
+      console.log("Active:", isActive);
+      console.log("Running:", isRunning);
+      console.log("Acceleration:", acceleration);
+      console.log("==========================");
     }, 1000);
   };
   
