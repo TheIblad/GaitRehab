@@ -176,23 +176,12 @@ function PatientHome() {
         </div>
       </div>
       
-      {/* Conditionally render the step tracker */}
-      {showTracker && (
-        <StepTracker 
-          onSessionComplete={handleActivitySessionComplete}
-          userSettings={{ 
-            height: user?.height || 170,
-            gender: user?.gender || 'neutral',
-            stepGoal: user?.stepGoal || 10000
-          }} 
-        />
-      )}
-      
       <div className="dashboard-content">
         <div className="content-left">
-          {!showTracker && (
+          {/* Only show StepTracker when showTracker is true */}
+          {showTracker && (
             <StepTracker 
-              onSessionComplete={handleActivitySessionComplete} 
+              onSessionComplete={handleActivitySessionComplete}
               userSettings={{ 
                 height: user?.height || 170,
                 gender: user?.gender || 'neutral',
