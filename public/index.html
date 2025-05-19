@@ -25,6 +25,20 @@
         }
       }(window.location))
     </script>
+    <!-- Add Remote.js for mobile debugging -->
+    <script src="https://remotejs.com/agent/agent.js?apiKey=YOUR_API_KEY"></script>
+    <script>
+      window.remote = new Remote({
+        apiKey: 'YOUR_API_KEY',
+        // Override console.log to send to Remote.js
+        console: {
+          log: true,
+          error: true,
+          warn: true,
+          info: true
+        }
+      });
+    </script>
   </head>
   <body>
     <div id="root"></div>

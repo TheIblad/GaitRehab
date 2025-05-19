@@ -4,6 +4,24 @@ import Card from '../common/Card';
 import Button from '../common/Button';
 import './StepTracker.css';
 
+// Add VisualLogger component
+const VisualLogger = ({ logs }) => {
+  if (!logs.length) return null;
+  
+  return (
+    <div className="visual-logger">
+      <h4>Debug Logs</h4>
+      <div className="log-container">
+        {logs.map((log, index) => (
+          <div key={index} className="log-entry">
+            {typeof log === 'object' ? JSON.stringify(log) : log}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const StepTracker = ({ onSessionComplete, userSettings = {} }) => {
   // Get user settings with defaults
   const {
@@ -38,8 +56,37 @@ const StepTracker = ({ onSessionComplete, userSettings = {} }) => {
   } = useStepCounter({
     userHeight: height,
     userGender: gender,
-    enabled: true
+    enabled: isTracking // Only enable when tracking is active
   });
+  
+  // Add logs state
+  const [logs, setLogs] = useState([]);
+  
+  // Function to add log
+  const addLog = (message) => {
+    setLogs(prev => {
+      const newLogs = [...prev, message];
+      // Keep only last 10 logs
+      return newLogs.slice(-10);
+    });
+  };
+  
+  // Update debug logging
+  useEffect(() => {
+    const state = {
+      isTracking,
+      isAvailable,
+      isActive,
+      error,
+      usingFallback,
+      steps,
+      distance,
+      cadence,
+      symmetry
+    };
+    console.log('Step Tracker State:', state);
+    addLog(`State: ${JSON.stringify(state)}`);
+  }, [isTracking, isAvailable, isActive, error, usingFallback, steps, distance, cadence, symmetry]);
   
   // Check for sensor permission on mount
   useEffect(() => {
@@ -60,8 +107,10 @@ const StepTracker = ({ onSessionComplete, userSettings = {} }) => {
     }
   }, []);
   
-  // Start tracking function
+  // Update start tracking function
   const handleStartTracking = () => {
+    console.log('Starting step tracking...');
+    addLog('Starting step tracking...');
     setIsTracking(true);
     setElapsedTime(0);
     start();
@@ -72,8 +121,10 @@ const StepTracker = ({ onSessionComplete, userSettings = {} }) => {
     }, 1000);
   };
   
-  // Stop tracking function
+  // Update stop tracking function
   const handleStopTracking = () => {
+    console.log('Stopping step tracking...');
+    addLog('Stopping step tracking...');
     setIsTracking(false);
     stop();
     
@@ -85,6 +136,8 @@ const StepTracker = ({ onSessionComplete, userSettings = {} }) => {
     
     // Get final stats and send to parent component
     const sessionStats = getSessionStats();
+    console.log('Session stats:', sessionStats);
+    addLog(`Session stats: ${JSON.stringify(sessionStats)}`);
     if (onSessionComplete) {
       onSessionComplete({
         ...sessionStats,
@@ -170,6 +223,9 @@ const StepTracker = ({ onSessionComplete, userSettings = {} }) => {
   return (
     <Card className="step-tracker-card">
       <h3>Step Tracker</h3>
+      
+      {/* Add VisualLogger component */}
+      <VisualLogger logs={logs} />
       
       <div className="tracker-metrics">
         <div className="tracker-metric-item">

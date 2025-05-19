@@ -268,3 +268,37 @@
     width: 100%;
   }
 }
+
+/* Visual Logger Styles */
+.visual-logger {
+  margin: 10px 0;
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.visual-logger h4 {
+  margin: 0 0 5px 0;
+  font-size: 14px;
+  color: #666;
+}
+
+.log-container {
+  max-height: 150px;
+  overflow-y: auto;
+  background: rgba(0, 0, 0, 0.02);
+  border-radius: 4px;
+  padding: 5px;
+}
+
+.log-entry {
+  padding: 3px 5px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  word-break: break-all;
+  font-family: monospace;
+}
+
+.log-entry:last-child {
+  border-bottom: none;
+}
