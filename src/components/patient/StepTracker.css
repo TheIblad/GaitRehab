@@ -296,3 +296,56 @@
     margin-top: 10px !important;
   }
 }
+
+/* Add these styles to the bottom of your StepTracker.css file */
+
+.desktop-warning {
+  background-color: #f8f9fa;
+  border: 2px dashed #cbd5e1;
+}
+
+.desktop-warning .tracker-error {
+  text-align: center;
+  padding: 30px 20px;
+  color: #64748b;
+}
+
+.desktop-warning .tracker-error i {
+  font-size: 48px;
+  color: #94a3b8;
+  margin-bottom: 20px;
+  display: block;
+}
+
+.desktop-warning .tracker-error p {
+  margin-bottom: 20px;
+  line-height: 1.6;
+  font-size: 16px;
+}
+
+.qr-code-container {
+  margin-top: 25px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.qr-instructions {
+  font-weight: 500;
+  margin-bottom: 15px;
+  color: #475569;
+}
+
+.qr-placeholder {
+  width: 150px;
+  height: 150px;
+  background-color: #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  border-radius: 8px;
+  font-size: 12px;
+  padding: 10px;
+  text-align: center;
+}

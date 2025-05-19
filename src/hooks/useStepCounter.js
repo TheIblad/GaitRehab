@@ -67,27 +67,23 @@ const useStepCounter = (options = {}) => {
             const newSteps = prevSteps + 1;
             
             // Update distance based on step length
-            const newDistance = newSteps * stepLengthMeters.current;
+            const newDistance = (newSteps * stepLengthMeters.current) / 1000; // Convert to kilometers
             setDistance(newDistance);
             
             // Record step interval for cadence calculation
             if (lastStepTime.current > 0) {
-              stepIntervals.current.push(timeSinceLastStep);
+              const interval = timeSinceLastStep;
+              stepIntervals.current.push(interval);
               
               // Keep last 10 intervals for calculations
               if (stepIntervals.current.length > 10) {
                 stepIntervals.current.shift();
               }
               
-              // Calculate cadence (steps per minute)
-              const avgInterval = stepIntervals.current.reduce((a, b) => a + b, 0) / stepIntervals.current.length;
-              const stepsPerMinute = Math.round(60000 / avgInterval);
-              setCadence(stepsPerMinute);
-              
               // Record step time for symmetry analysis
               stepTimeHistory.current.push({
                 timestamp: now,
-                interval: timeSinceLastStep
+                interval: interval
               });
               
               // Keep last 20 steps for symmetry calculation
@@ -95,9 +91,13 @@ const useStepCounter = (options = {}) => {
                 stepTimeHistory.current.shift();
               }
               
-              // Calculate symmetry from step intervals
-              // This is a simplified approach - real gait asymmetry needs more complex analysis
-              if (stepTimeHistory.current.length >= 6) {
+              // Calculate cadence (steps per minute)
+              const avgInterval = stepIntervals.current.reduce((a, b) => a + b, 0) / stepIntervals.current.length;
+              const stepsPerMinute = Math.round(60000 / avgInterval);
+              setCadence(stepsPerMinute);
+              
+              // Calculate symmetry from step intervals if we have enough data
+              if (stepTimeHistory.current.length >= 4) {
                 calculateSymmetry();
               }
             }
@@ -123,6 +123,8 @@ const useStepCounter = (options = {}) => {
   
   // Calculate gait symmetry from step intervals
   const calculateSymmetry = () => {
+    if (stepTimeHistory.current.length < 4) return; // Need at least 4 steps
+    
     // Calculate mean interval
     const intervals = stepTimeHistory.current.map(step => step.interval);
     const mean = intervals.reduce((a, b) => a + b, 0) / intervals.length;
@@ -138,6 +140,8 @@ const useStepCounter = (options = {}) => {
     // Convert to symmetry percentage (100% - asymmetry)
     // Lower CV means more consistent steps, which suggests better symmetry
     const symmetryValue = Math.min(100, Math.max(0, 100 - cv));
+    
+    console.log("Calculated symmetry:", Math.round(symmetryValue), "% from", intervals.length, "intervals");
     
     setSymmetry(Math.round(symmetryValue));
   };
@@ -189,7 +193,7 @@ const useStepCounter = (options = {}) => {
   const getSessionStats = useCallback(() => {
     return {
       steps,
-      distance: distance.toFixed(2),
+      distance, // Return raw distance in km
       cadence,
       symmetry,
       duration: getSessionDuration(),
@@ -205,7 +209,7 @@ const useStepCounter = (options = {}) => {
   
   return {
     steps,
-    distance: parseFloat(distance.toFixed(2)),
+    distance, // Return raw distance in km
     cadence,
     symmetry,
     isAvailable,

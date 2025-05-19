@@ -1,0 +1,13 @@
+{
+  "files": {
+    "main.css": "/GaitRehab/static/css/main.08720ea5.css",
+    "main.js": "/GaitRehab/static/js/main.78e3d5f5.js",
+    "index.html": "/GaitRehab/index.html",
+    "main.08720ea5.css.map": "/GaitRehab/static/css/main.08720ea5.css.map",
+    "main.78e3d5f5.js.map": "/GaitRehab/static/js/main.78e3d5f5.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.08720ea5.css",
+    "static/js/main.78e3d5f5.js"
+  ]
+}

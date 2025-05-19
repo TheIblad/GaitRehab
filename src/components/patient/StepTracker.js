@@ -18,6 +18,7 @@ const StepTracker = ({ onSessionComplete, userSettings = {} }) => {
   const [elapsedTime, setElapsedTime] = useState(0);
   const [showPermissionPrompt, setShowPermissionPrompt] = useState(false);
   const [permissionDenied, setPermissionDenied] = useState(false);
+  const [isMobileDevice, setIsMobileDevice] = useState(false);
   
   // Timer ref
   const timerRef = useRef(null);
@@ -30,7 +31,7 @@ const StepTracker = ({ onSessionComplete, userSettings = {} }) => {
     symmetry,
     isAvailable,
     isActive,
-    isRunning, // Added this line
+    isRunning,
     error,
     usingFallback,
     start,
@@ -49,6 +50,17 @@ const StepTracker = ({ onSessionComplete, userSettings = {} }) => {
     enabled: true
   });
   
+  // Check if user is on a mobile device
+  useEffect(() => {
+    const checkMobileDevice = () => {
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      setIsMobileDevice(isMobile);
+      console.log("Is mobile device:", isMobile);
+    };
+    
+    checkMobileDevice();
+  }, []);
+  
   // Check for sensor permission on mount
   useEffect(() => {
     if ('permissions' in navigator) {
@@ -62,8 +74,6 @@ const StepTracker = ({ onSessionComplete, userSettings = {} }) => {
         })
         .catch(err => {
           console.warn('Could not check permissions:', err);
-          // If permission check fails, we'll try to use the sensor anyway
-          // and let the browser handle permission prompts
         });
     }
   }, []);
@@ -140,6 +150,26 @@ const StepTracker = ({ onSessionComplete, userSettings = {} }) => {
   // Calculate progress towards goal
   const progressPercentage = Math.min(100, (steps / stepGoal) * 100);
   
+  // If not on a mobile device, show a different card
+  if (!isMobileDevice) {
+    return (
+      <Card className="step-tracker-card desktop-warning">
+        <h3>Step Tracker</h3>
+        <div className="tracker-error">
+          <i className="fas fa-desktop"></i>
+          <p>
+            Step tracking requires motion sensors that are only available on mobile devices.
+            Please open this app on your smartphone or tablet to use the step tracking feature.
+          </p>
+          <div className="qr-code-container">
+            <p className="qr-instructions">Scan this QR code with your mobile device:</p>
+            <div className="qr-placeholder">QR Code would appear here in production</div>
+          </div>
+        </div>
+      </Card>
+    );
+  }
+  
   // If sensors are not available
   if (error || !isAvailable) {
     return (
@@ -192,7 +222,6 @@ const StepTracker = ({ onSessionComplete, userSettings = {} }) => {
     <Card className="step-tracker-card">
       <h3>Step Tracker</h3>
       
-      {/* Tracking controls at the top */}
       <div className="tracker-controls" style={{ marginBottom: '16px' }}>
         {!isTracking ? (
           <Button 
@@ -222,7 +251,6 @@ const StepTracker = ({ onSessionComplete, userSettings = {} }) => {
         )}
       </div>
       
-      {/* Mobile-friendly debug display */}
       <div style={{ 
         backgroundColor: '#f0f0f0',
         padding: '8px',
@@ -236,7 +264,13 @@ const StepTracker = ({ onSessionComplete, userSettings = {} }) => {
           {usingFallback && ' (Using Fallback)'}
         </div>
         <div style={{ marginBottom: '4px' }}>
+          <strong>Device Type:</strong> {isMobileDevice ? '📱 Mobile' : '💻 Desktop'}
+        </div>
+        <div style={{ marginBottom: '4px' }}>
           <strong>State:</strong> {isActive ? 'Active' : 'Inactive'} / {isTracking ? 'Tracking' : 'Not Tracking'}
+        </div>
+        <div style={{ marginBottom: '4px' }}>
+          <strong>Steps:</strong> {steps}
         </div>
         <div style={{ marginBottom: '4px' }}>
           <strong>Acceleration:</strong>
