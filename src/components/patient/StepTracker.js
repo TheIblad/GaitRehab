@@ -178,6 +178,36 @@ const StepTracker = ({ onSessionComplete, userSettings = {} }) => {
     <Card className="step-tracker-card">
       <h3>Step Tracker</h3>
       
+      {/* Tracking controls at the top */}
+      <div className="tracker-controls" style={{ marginBottom: '16px' }}>
+        {!isTracking ? (
+          <Button 
+            variant="primary" 
+            className="tracker-start-btn"
+            onClick={handleStartTracking}
+          >
+            Start Tracking
+          </Button>
+        ) : (
+          <>
+            <Button 
+              variant="danger" 
+              className="tracker-stop-btn"
+              onClick={handleStopTracking}
+            >
+              Stop & Save
+            </Button>
+            <Button 
+              variant="secondary" 
+              className="tracker-reset-btn"
+              onClick={handleResetTracking}
+            >
+              Reset
+            </Button>
+          </>
+        )}
+      </div>
+      
       {/* Mobile-friendly debug display */}
       <div style={{ 
         backgroundColor: '#f0f0f0',
@@ -261,35 +291,6 @@ const StepTracker = ({ onSessionComplete, userSettings = {} }) => {
           Using device motion sensors (limited accuracy)
         </div>
       )}
-      
-      <div className="tracker-controls">
-        {!isTracking ? (
-          <Button 
-            variant="primary" 
-            className="tracker-start-btn"
-            onClick={handleStartTracking}
-          >
-            Start Tracking
-          </Button>
-        ) : (
-          <>
-            <Button 
-              variant="danger" 
-              className="tracker-stop-btn"
-              onClick={handleStopTracking}
-            >
-              Stop & Save
-            </Button>
-            <Button 
-              variant="secondary" 
-              className="tracker-reset-btn"
-              onClick={handleResetTracking}
-            >
-              Reset
-            </Button>
-          </>
-        )}
-      </div>
     </Card>
   );
 };
