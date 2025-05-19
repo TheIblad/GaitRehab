@@ -7,11 +7,11 @@ import { estimateStepLength } from '../utils/sensorUtils';
  */
 const useStepCounter = (options = {}) => {
   const {
-    stepThreshold = 3.0,       // MUCH lower threshold for better sensitivity on mobile
-    stepCooldown = 250,        // Shorter cooldown to detect steps more frequently
+    stepThreshold = 10.0,       // Increase threshold to be less sensitive (was 3.0)
+    stepCooldown = 400,        // Increase cooldown to prevent rapid counting (was 250)
     userHeight = 170,          // User height in cm for step length calculation
     userGender = 'neutral',    // User gender for step length calculation
-    filterCoefficient = 0.5,   // Higher coefficient for faster response to changes
+    filterCoefficient = 0.3,   // Reduce coefficient for more smoothing (was 0.5)
     onStepDetected = null,     // Callback when a step is detected
     enabled = true             // Whether the step counter is enabled
   } = options;
@@ -26,10 +26,12 @@ const useStepCounter = (options = {}) => {
   
   // Refs for tracking between renders
   const lastStepTime = useRef(0);
+  const peakDetected = useRef(false); // Track if we're currently in a peak
   const stepIntervals = useRef([]);
   const stepTimeHistory = useRef([]);
   const startTime = useRef(null);
   const stepLengthMeters = useRef(estimateStepLength(userHeight, userGender));
+  const lastMagnitudes = useRef([]);  // Store recent magnitude values for peak detection
   
   // Use the accelerometer hook
   const {
@@ -52,12 +54,25 @@ const useStepCounter = (options = {}) => {
     const now = Date.now();
     const { magnitude } = acceleration;
     
+    // Add magnitude to history, keeping last 5 values
+    lastMagnitudes.current.push(magnitude);
+    if (lastMagnitudes.current.length > 5) {
+      lastMagnitudes.current.shift();
+    }
+    
     // Check if we're past the cooldown period
     const timeSinceLastStep = now - lastStepTime.current;
     
     if (timeSinceLastStep > stepCooldown) {
-      // Enhanced peak detection with additional checks
-      if (magnitude > stepThreshold) {
+      // Improved peak detection algorithm
+      const isPeak = magnitude > stepThreshold && 
+                     !peakDetected.current &&
+                     lastMagnitudes.current.length >= 3;
+      
+      if (isPeak) {
+        // Mark that we've detected a peak
+        peakDetected.current = true;
+        
         // Increment step count
         setSteps(prevSteps => {
           const newSteps = prevSteps + 1;
@@ -111,6 +126,9 @@ const useStepCounter = (options = {}) => {
         
         // Update last step time
         lastStepTime.current = now;
+      } else if (magnitude < stepThreshold * 0.6) {
+        // Reset peak detection when magnitude drops significantly below threshold
+        peakDetected.current = false;
       }
     }
   }, [acceleration, isActive, isRunning, onStepDetected, stepCooldown, stepThreshold]);
@@ -157,6 +175,8 @@ const useStepCounter = (options = {}) => {
     lastStepTime.current = 0;
     stepIntervals.current = [];
     stepTimeHistory.current = [];
+    lastMagnitudes.current = [];
+    peakDetected.current = false;
     
     // Reset counters
     setSteps(0);
@@ -180,6 +200,8 @@ const useStepCounter = (options = {}) => {
     lastStepTime.current = 0;
     stepIntervals.current = [];
     stepTimeHistory.current = [];
+    lastMagnitudes.current = [];
+    peakDetected.current = false;
     startTime.current = isActive ? Date.now() : null;
   }, [isActive]);
   
@@ -209,11 +231,12 @@ const useStepCounter = (options = {}) => {
   
   return {
     steps,
-    distance, // Return raw distance in km
+    distance,
     cadence,
     symmetry,
     isAvailable,
     isActive,
+    isRunning,
     error: accelerometerError,
     usingFallback,
     acceleration,
