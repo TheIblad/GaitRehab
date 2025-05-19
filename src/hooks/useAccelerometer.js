@@ -46,16 +46,21 @@ const useAccelerometer = (options = {}) => {
       setError(null);
       
       try {
+        console.log('Initializing accelerometer...');
+        
         // First try to use the Sensor API
         if (isSensorsSupported()) {
+          console.log('Sensor API is supported');
+          
           // Request permission if needed
           await requestAccelerometerPermission();
           
           // Check for Accelerometer class
           if (AccelerometerClass) {
+            console.log('Using Accelerometer API');
             sensor.current = new AccelerometerClass({ frequency });
           } else {
-            // Use the mock implementation as fallback
+            console.log('Using MockAccelerometer');
             sensor.current = new MockAccelerometer({ frequency });
             setUsingFallback(true);
           }
@@ -68,6 +73,7 @@ const useAccelerometer = (options = {}) => {
             
             // Try fallback if primary sensor fails
             if (useDeviceMotionFallback) {
+              console.log('Trying DeviceMotion fallback after error');
               initDeviceMotionFallback();
             }
           });
@@ -103,6 +109,7 @@ const useAccelerometer = (options = {}) => {
           
           // Start the sensor if needed
           if (isRunning) {
+            console.log('Starting accelerometer');
             sensor.current.start();
           }
           
@@ -111,6 +118,7 @@ const useAccelerometer = (options = {}) => {
         
         // If Sensor API is not available, use DeviceMotion as fallback
         if (useDeviceMotionFallback && isDeviceMotionSupported()) {
+          console.log('Using DeviceMotion fallback');
           initDeviceMotionFallback();
           return;
         }
@@ -125,6 +133,7 @@ const useAccelerometer = (options = {}) => {
         
         // Try fallback if primary method fails
         if (useDeviceMotionFallback && isDeviceMotionSupported() && !usingFallback) {
+          console.log('Trying DeviceMotion fallback after error');
           initDeviceMotionFallback();
         }
       }
@@ -132,11 +141,17 @@ const useAccelerometer = (options = {}) => {
 
     // Initialize devicemotion fallback
     const initDeviceMotionFallback = () => {
+      console.log('Initializing DeviceMotion fallback');
       setUsingFallback(true);
       
       // Create device motion handler
       deviceMotionListener.current = (event) => {
-        const { x, y, z } = event.accelerationIncludingGravity || { x: 0, y: 0, z: 0 };
+        if (!event.accelerationIncludingGravity) {
+          console.log('No acceleration data in DeviceMotion event');
+          return;
+        }
+        
+        const { x, y, z } = event.accelerationIncludingGravity;
         
         // Apply low-pass filter
         const filteredX = applyLowPassFilter(x, previousValues.current.x, filterCoefficient);
@@ -163,6 +178,7 @@ const useAccelerometer = (options = {}) => {
       setIsAvailable(true);
       
       if (isRunning) {
+        console.log('Adding DeviceMotion event listener');
         window.addEventListener('devicemotion', deviceMotionListener.current);
       }
     };

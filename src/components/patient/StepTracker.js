@@ -34,7 +34,8 @@ const StepTracker = ({ onSessionComplete, userSettings = {} }) => {
     start,
     stop,
     reset,
-    getSessionStats
+    getSessionStats,
+    acceleration
   } = useStepCounter({
     userHeight: height,
     userGender: gender,
@@ -170,6 +171,44 @@ const StepTracker = ({ onSessionComplete, userSettings = {} }) => {
   return (
     <Card className="step-tracker-card">
       <h3>Step Tracker</h3>
+      
+      {/* Mobile-friendly debug display */}
+      <div style={{ 
+        backgroundColor: '#f0f0f0',
+        padding: '8px',
+        margin: '8px 0',
+        borderRadius: '4px',
+        fontSize: '14px',
+        border: '1px solid #ddd'
+      }}>
+        <div style={{ marginBottom: '4px' }}>
+          <strong>Sensor Status:</strong> {isAvailable ? '✅ Available' : '❌ Not Available'}
+          {usingFallback && ' (Using Fallback)'}
+        </div>
+        <div style={{ marginBottom: '4px' }}>
+          <strong>State:</strong> {isActive ? 'Active' : 'Inactive'} / {isTracking ? 'Tracking' : 'Not Tracking'}
+        </div>
+        <div style={{ marginBottom: '4px' }}>
+          <strong>Acceleration:</strong>
+          <div style={{ marginLeft: '8px' }}>
+            X: {acceleration.x.toFixed(2)} m/s²
+          </div>
+          <div style={{ marginLeft: '8px' }}>
+            Y: {acceleration.y.toFixed(2)} m/s²
+          </div>
+          <div style={{ marginLeft: '8px' }}>
+            Z: {acceleration.z.toFixed(2)} m/s²
+          </div>
+          <div style={{ marginLeft: '8px' }}>
+            Magnitude: {acceleration.magnitude.toFixed(2)} m/s²
+          </div>
+        </div>
+        {error && (
+          <div style={{ color: 'red', marginTop: '4px' }}>
+            <strong>Error:</strong> {error}
+          </div>
+        )}
+      </div>
       
       <div className="tracker-metrics">
         <div className="tracker-metric-item">
