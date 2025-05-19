@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import useStepCounter from '../../hooks/useStepCounter';
+import useAccelerometer from '../../hooks/useAccelerometer';
 import Card from '../common/Card';
 import Button from '../common/Button';
 import './StepTracker.css';
@@ -34,11 +35,16 @@ const StepTracker = ({ onSessionComplete, userSettings = {} }) => {
     start,
     stop,
     reset,
-    getSessionStats,
-    acceleration
+    getSessionStats
   } = useStepCounter({
     userHeight: height,
     userGender: gender,
+    enabled: true
+  });
+  
+  // Get acceleration data from useAccelerometer directly
+  const { acceleration } = useAccelerometer({
+    filterCoefficient: 0.3,
     enabled: true
   });
   
