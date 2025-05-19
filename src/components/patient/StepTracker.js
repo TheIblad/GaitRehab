@@ -17,6 +17,7 @@ const StepTracker = ({ onSessionComplete, userSettings = {} }) => {
   const [elapsedTime, setElapsedTime] = useState(0);
   const [showPermissionPrompt, setShowPermissionPrompt] = useState(false);
   const [permissionDenied, setPermissionDenied] = useState(false);
+  const [localIsAvailable, setLocalIsAvailable] = useState(true); // Add this state variable
   
   // Timer ref
   const timerRef = useRef(null);
@@ -47,7 +48,7 @@ const StepTracker = ({ onSessionComplete, userSettings = {} }) => {
       try {
         // First try to use DeviceMotion as it's more widely supported
         if ('DeviceMotionEvent' in window) {
-          setIsAvailable(true);
+          setLocalIsAvailable(true); // Use localIsAvailable instead
         }
         
         // Then try Accelerometer API
@@ -67,7 +68,7 @@ const StepTracker = ({ onSessionComplete, userSettings = {} }) => {
       } catch (err) {
         console.warn('Could not check permissions:', err);
         // If permission check fails, assume sensors are available
-        setIsAvailable(true);
+        setLocalIsAvailable(true); // Use localIsAvailable instead
       }
     };
     
