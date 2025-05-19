@@ -30,6 +30,7 @@ const StepTracker = ({ onSessionComplete, userSettings = {} }) => {
     symmetry,
     isAvailable,
     isActive,
+    isRunning, // Added this line
     error,
     usingFallback,
     start,
