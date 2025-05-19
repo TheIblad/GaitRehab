@@ -7,8 +7,8 @@ import { estimateStepLength } from '../utils/sensorUtils';
  */
 const useStepCounter = (options = {}) => {
   const {
-    stepThreshold = 10.5,      // Lower threshold to detect normal walking motions
-    stepCooldown = 300,        // Shorter cooldown to detect steps more frequently
+    stepThreshold = 9.0,      // Lower threshold to better detect steps
+    stepCooldown = 250,        // Shorter cooldown to detect steps more frequently
     userHeight = 170,          // User height in cm for step length calculation
     userGender = 'neutral',    // User gender for step length calculation
     filterCoefficient = 0.2,   // Reduced filter coefficient for more responsive readings
@@ -63,8 +63,7 @@ const useStepCounter = (options = {}) => {
     const now = Date.now();
     const { magnitude } = acceleration;
     
-    // Debug logging - uncomment for troubleshooting
-    /*
+    // Debug logging
     console.log("Accelerometer reading:", {
       magnitude: acceleration.magnitude,
       threshold: stepThreshold,
@@ -72,7 +71,6 @@ const useStepCounter = (options = {}) => {
       isPeak: isPeak.current,
       motionVariance: motionBuffer.current.length > 1 ? calculateVariance(motionBuffer.current) : 0,
     });
-    */
     
     // Add to motion buffer
     motionBuffer.current.push(magnitude);
@@ -82,7 +80,7 @@ const useStepCounter = (options = {}) => {
     
     // Calculate motion variance to detect if the user is actually moving
     const motionVariance = calculateVariance(motionBuffer.current);
-    const isInMotion = motionVariance > 0.15; // Lower this threshold for better sensitivity
+    const isInMotion = motionVariance > 0.15; // Lower threshold for better sensitivity
     
     // Check if we're past the cooldown period
     const timeSinceLastStep = now - lastStepTime.current;

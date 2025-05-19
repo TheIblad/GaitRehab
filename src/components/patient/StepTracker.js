@@ -17,6 +17,7 @@ const StepTracker = ({ onSessionComplete, userSettings = {} }) => {
   const [elapsedTime, setElapsedTime] = useState(0);
   const [showPermissionPrompt, setShowPermissionPrompt] = useState(false);
   const [permissionDenied, setPermissionDenied] = useState(false);
+  const [isAvailable, setIsAvailable] = useState(false);
   
   // Timer ref
   const timerRef = useRef(null);
@@ -27,7 +28,6 @@ const StepTracker = ({ onSessionComplete, userSettings = {} }) => {
     distance,
     cadence,
     symmetry,
-    isAvailable,
     isActive,
     error,
     usingFallback,
@@ -38,48 +38,53 @@ const StepTracker = ({ onSessionComplete, userSettings = {} }) => {
   } = useStepCounter({
     userHeight: height,
     userGender: gender,
-    enabled: isTracking // Only enable when tracking is active
+    enabled: true // Always enable the step counter
   });
   
   // Check for sensor permission on mount
   useEffect(() => {
-    if ('permissions' in navigator) {
-      navigator.permissions.query({ name: 'accelerometer' })
-        .then(result => {
+    const checkPermissions = async () => {
+      try {
+        // First try to use DeviceMotion as it's more widely supported
+        if ('DeviceMotionEvent' in window) {
+          setIsAvailable(true);
+          return;
+        }
+        
+        // Then try Accelerometer API
+        if ('permissions' in navigator) {
+          const result = await navigator.permissions.query({ name: 'accelerometer' });
           if (result.state === 'prompt') {
             setShowPermissionPrompt(true);
           } else if (result.state === 'denied') {
             setPermissionDenied(true);
+          } else {
+            setIsAvailable(true);
           }
-        })
-        .catch(err => {
-          console.warn('Could not check permissions:', err);
-          // If permission check fails, we'll try to use the sensor anyway
-          // and let the browser handle permission prompts
-        });
-    }
+        } else {
+          // If permissions API is not available, assume sensors are available
+          setIsAvailable(true);
+        }
+      } catch (err) {
+        console.warn('Could not check permissions:', err);
+        // If permission check fails, assume sensors are available
+        setIsAvailable(true);
+      }
+    };
+    
+    checkPermissions();
   }, []);
   
   // Start tracking function
-  const handleStartTracking = async () => {
-    try {
-      // Start the step counter first
-      await start();
-      
-      // Only proceed if start was successful
-      if (isActive) {
-        setIsTracking(true);
-        setElapsedTime(0);
-        
-        // Start the timer
-        timerRef.current = setInterval(() => {
-          setElapsedTime(prev => prev + 1);
-        }, 1000);
-      }
-    } catch (err) {
-      console.error('Failed to start tracking:', err);
-      alert('Failed to start tracking. Please check sensor permissions.');
-    }
+  const handleStartTracking = () => {
+    setIsTracking(true);
+    setElapsedTime(0);
+    start();
+    
+    // Start the timer
+    timerRef.current = setInterval(() => {
+      setElapsedTime(prev => prev + 1);
+    }, 1000);
   };
   
   // Stop tracking function

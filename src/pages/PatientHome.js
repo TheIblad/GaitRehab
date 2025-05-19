@@ -21,7 +21,6 @@ function PatientHome() {
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showMock, setShowMock] = useState(false);
-  const [showTracker, setShowTracker] = useState(false); // State to toggle the tracker
   const [prefilledActivityData, setPrefilledActivityData] = useState(null); // State to store prefilled activity data
 
   // Function to load activities data
@@ -167,28 +166,20 @@ function PatientHome() {
           >
             {showMock ? 'Show My Data' : 'Show Demo Data'}
           </Button>
-          <Button
-            variant={showTracker ? 'secondary' : 'primary'}
-            onClick={() => setShowTracker((prev) => !prev)}
-          >
-            {showTracker ? 'Hide Tracker' : 'Show Tracker'}
-          </Button>
         </div>
       </div>
       
       <div className="dashboard-content">
         <div className="content-left">
-          {/* Only show StepTracker when showTracker is true */}
-          {showTracker && (
-            <StepTracker 
-              onSessionComplete={handleActivitySessionComplete}
-              userSettings={{ 
-                height: user?.height || 170,
-                gender: user?.gender || 'neutral',
-                stepGoal: user?.stepGoal || 10000
-              }} 
-            />
-          )}
+          {/* Always show StepTracker */}
+          <StepTracker 
+            onSessionComplete={handleActivitySessionComplete}
+            userSettings={{ 
+              height: user?.height || 170,
+              gender: user?.gender || 'neutral',
+              stepGoal: user?.stepGoal || 10000
+            }} 
+          />
           
           <Card className="chart-card">
             <ProgressChart activities={activities} />
