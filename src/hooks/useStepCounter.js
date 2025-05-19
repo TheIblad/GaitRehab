@@ -7,8 +7,8 @@ import { estimateStepLength } from '../utils/sensorUtils';
  */
 const useStepCounter = (options = {}) => {
   const {
-    stepThreshold = 12.0,      // Reduced threshold to detect more subtle movements
-    stepCooldown = 400,        // Reduced cooldown to allow more frequent step detection
+    stepThreshold = 10.5,      // Lower threshold to detect normal walking motions
+    stepCooldown = 300,        // Shorter cooldown to detect steps more frequently
     userHeight = 170,          // User height in cm for step length calculation
     userGender = 'neutral',    // User gender for step length calculation
     filterCoefficient = 0.2,   // Reduced filter coefficient for more responsive readings
@@ -55,92 +55,91 @@ const useStepCounter = (options = {}) => {
     const now = Date.now();
     const { magnitude } = acceleration;
     
+    // Add this near the top of the useEffect for step detection:
+    console.log("Accelerometer reading:", {
+      magnitude: acceleration.magnitude,
+      threshold: stepThreshold,
+      timeSinceLastStep: Date.now() - lastStepTime.current,
+      isPeak: isPeak.current,
+      motionVariance: motionBuffer.current.length > 1 ? calculateVariance(motionBuffer.current) : 0,
+    });
+    
     // Add to motion buffer
     motionBuffer.current.push(magnitude);
     if (motionBuffer.current.length > 10) {
       motionBuffer.current.shift();
     }
     
-    // Calculate motion variance
+    // Calculate motion variance to detect if the user is actually moving
     const motionVariance = calculateVariance(motionBuffer.current);
-    const isInMotion = motionVariance > 0.2; // Reduced threshold for motion detection
-    
-    // Debug logging
-    console.log('Motion Data:', {
-      magnitude,
-      motionVariance,
-      isInMotion,
-      timeSinceLastStep: now - lastStepTime.current,
-      isPeak: isPeak.current
-    });
+    const isInMotion = motionVariance > 0.15; // Lower this threshold for better sensitivity
     
     // Check if we're past the cooldown period
     const timeSinceLastStep = now - lastStepTime.current;
     
-    if (timeSinceLastStep > stepCooldown && isInMotion) {
-      // Enhanced peak detection
-      if (magnitude > stepThreshold && !isPeak.current) {
-        // Check if this is a significant enough change from previous readings
-        const isSignificantChange = Math.abs(magnitude - lastMagnitude.current) > 4; // Reduced threshold
+    if (timeSinceLastStep > stepCooldown) {
+      // Step detection with improved peak detection
+      if (magnitude > stepThreshold && magnitude > lastMagnitude.current && !isPeak.current) {
+        isPeak.current = true;
         
-        if (isSignificantChange) {
-          isPeak.current = true;
+        // Increment step count
+        setSteps(prevSteps => {
+          const newSteps = prevSteps + 1;
           
-          // Increment step count
-          setSteps(prevSteps => {
-            const newSteps = prevSteps + 1;
+          // Update distance based on step length
+          const newDistance = newSteps * stepLengthMeters.current;
+          setDistance(newDistance);
+          
+          // Record step interval for cadence calculation
+          if (lastStepTime.current > 0) {
+            const interval = timeSinceLastStep;
+            stepIntervals.current.push(interval);
             
-            // Update distance based on step length (in meters)
-            const newDistance = (newSteps * stepLengthMeters.current) / 1000; // Convert to km
-            setDistance(newDistance);
-            
-            // Record step interval for cadence calculation
-            if (lastStepTime.current > 0) {
-              stepIntervals.current.push(timeSinceLastStep);
-              
-              // Keep last 10 intervals for calculations
-              if (stepIntervals.current.length > 10) {
-                stepIntervals.current.shift();
-              }
-              
-              // Calculate cadence (steps per minute)
-              const avgInterval = stepIntervals.current.reduce((a, b) => a + b, 0) / stepIntervals.current.length;
-              const stepsPerMinute = Math.round(60000 / avgInterval);
-              setCadence(stepsPerMinute);
-              
-              // Record step time for symmetry analysis
-              stepTimeHistory.current.push({
-                timestamp: now,
-                interval: timeSinceLastStep
-              });
-              
-              // Keep last 20 steps for symmetry calculation
-              if (stepTimeHistory.current.length > 20) {
-                stepTimeHistory.current.shift();
-              }
-              
-              // Calculate symmetry from step intervals
-              if (stepTimeHistory.current.length >= 6) {
-                calculateSymmetry();
-              }
+            // Keep last 10 intervals for calculations
+            if (stepIntervals.current.length > 10) {
+              stepIntervals.current.shift();
             }
             
-            // Fire callback if provided
-            if (onStepDetected) {
-              onStepDetected({
-                steps: newSteps,
-                distance: newDistance,
-                timestamp: now
-              });
+            // Record step time for symmetry analysis
+            stepTimeHistory.current.push({
+              timestamp: now,
+              interval: interval
+            });
+            
+            // Keep last 20 steps for symmetry calculation
+            if (stepTimeHistory.current.length > 20) {
+              stepTimeHistory.current.shift();
             }
             
-            return newSteps;
-          });
+            // Calculate cadence (steps per minute)
+            const avgInterval = stepIntervals.current.reduce((a, b) => a + b, 0) / stepIntervals.current.length;
+            const stepsPerMinute = Math.round(60000 / avgInterval);
+            setCadence(stepsPerMinute);
+            
+            // Calculate symmetry from step intervals
+            if (stepTimeHistory.current.length >= 6) {
+              calculateSymmetry();
+            }
+          }
           
           // Update last step time
           lastStepTime.current = now;
-        }
-      } else if (magnitude < stepThreshold) {
+          
+          // Call the callback if provided
+          if (onStepDetected) {
+            onStepDetected({
+              steps: newSteps,
+              distance: newDistance,
+              timestamp: now
+            });
+          }
+          
+          console.log("Step detected!", newSteps);
+          return newSteps;
+        });
+      } 
+      // Important: Reset isPeak when magnitude drops below threshold
+      else if (magnitude < stepThreshold - 1) {
         isPeak.current = false;
       }
     }
