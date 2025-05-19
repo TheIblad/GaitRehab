@@ -48,6 +48,14 @@ const useStepCounter = (options = {}) => {
     enabled
   });
   
+  // Helper function to calculate variance
+  const calculateVariance = (values) => {
+    if (!values || values.length <= 1) return 0;
+    const mean = values.reduce((a, b) => a + b, 0) / values.length;
+    const squaredDiffs = values.map(value => Math.pow(value - mean, 2));
+    return squaredDiffs.reduce((a, b) => a + b, 0) / values.length;
+  };
+  
   // Step detection algorithm
   useEffect(() => {
     if (!isActive || !isRunning) return;
@@ -55,14 +63,16 @@ const useStepCounter = (options = {}) => {
     const now = Date.now();
     const { magnitude } = acceleration;
     
-    // Add this near the top of the useEffect for step detection:
+    // Debug logging - uncomment for troubleshooting
+    /*
     console.log("Accelerometer reading:", {
       magnitude: acceleration.magnitude,
       threshold: stepThreshold,
-      timeSinceLastStep: Date.now() - lastStepTime.current,
+      timeSinceLastStep: now - lastStepTime.current,
       isPeak: isPeak.current,
       motionVariance: motionBuffer.current.length > 1 ? calculateVariance(motionBuffer.current) : 0,
     });
+    */
     
     // Add to motion buffer
     motionBuffer.current.push(magnitude);
@@ -147,13 +157,6 @@ const useStepCounter = (options = {}) => {
     // Update last magnitude
     lastMagnitude.current = magnitude;
   }, [acceleration, isActive, isRunning, onStepDetected, stepCooldown, stepThreshold]);
-
-  // Helper function to calculate variance
-  const calculateVariance = (values) => {
-    const mean = values.reduce((a, b) => a + b, 0) / values.length;
-    const squaredDiffs = values.map(value => Math.pow(value - mean, 2));
-    return squaredDiffs.reduce((a, b) => a + b, 0) / values.length;
-  };
   
   // Calculate gait symmetry from step intervals
   const calculateSymmetry = () => {
@@ -187,6 +190,7 @@ const useStepCounter = (options = {}) => {
     lastStepTime.current = 0;
     stepIntervals.current = [];
     stepTimeHistory.current = [];
+    isPeak.current = false;
     
     // Reset counters
     setSteps(0);
@@ -223,7 +227,7 @@ const useStepCounter = (options = {}) => {
   const getSessionStats = useCallback(() => {
     return {
       steps,
-      distance: distance.toFixed(2),
+      distance: parseFloat(distance.toFixed(2)),
       cadence,
       symmetry,
       duration: getSessionDuration(),
