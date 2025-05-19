@@ -191,16 +191,16 @@ const StepTracker = ({ onSessionComplete, userSettings = {} }) => {
         <div style={{ marginBottom: '4px' }}>
           <strong>Acceleration:</strong>
           <div style={{ marginLeft: '8px' }}>
-            X: {acceleration.x.toFixed(2)} m/s²
+            X: {acceleration?.x?.toFixed(2) ?? '0.00'} m/s²
           </div>
           <div style={{ marginLeft: '8px' }}>
-            Y: {acceleration.y.toFixed(2)} m/s²
+            Y: {acceleration?.y?.toFixed(2) ?? '0.00'} m/s²
           </div>
           <div style={{ marginLeft: '8px' }}>
-            Z: {acceleration.z.toFixed(2)} m/s²
+            Z: {acceleration?.z?.toFixed(2) ?? '0.00'} m/s²
           </div>
           <div style={{ marginLeft: '8px' }}>
-            Magnitude: {acceleration.magnitude.toFixed(2)} m/s²
+            Magnitude: {acceleration?.magnitude?.toFixed(2) ?? '0.00'} m/s²
           </div>
         </div>
         {error && (

@@ -212,6 +212,7 @@ const useStepCounter = (options = {}) => {
     isActive,
     error: accelerometerError,
     usingFallback,
+    acceleration,
     start,
     stop,
     reset,
