@@ -6,9 +6,10 @@ import { fetchUserActivities } from '../utils/firestoreQueries';
 import { useAuth } from '../contexts/AuthContext';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
-import { mockActivities } from '../mock/mockActivities'; // Import mock data
+import { mockActivities } from '../mock/mockActivities';
 import './Progress.css';
 
+// Show how well you're doing
 function Progress() {
   const { user } = useAuth();
   const [allActivities, setAllActivities] = useState([]);
@@ -68,7 +69,7 @@ function Progress() {
         </Button>
       </div>
       
-      {/* Add stats cards similar to patient dashboard */}
+      {/* Show today's stats */}
       <div className="stats-cards">
         <Card className="stat-card">
           <div className="stat-value">{stats.steps}</div>

@@ -6,6 +6,7 @@ import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import Button from '../components/common/Button';
 import './Register.css';
 
+// Some test activities
 const mockActivities = [
   {
     id: 'activity1',
@@ -19,11 +20,12 @@ const mockActivities = [
   },
 ];
 
+// Let users make a new account
 function Register() {
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('patient'); // Default role is patient
+  const [role, setRole] = useState('patient'); // Start as patient
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -34,24 +36,24 @@ function Register() {
     setLoading(true);
 
     try {
-      // Create user with email and password
+      // Make new user account
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // Update the user's display name
+      // Save their name
       await updateProfile(user, { displayName });
 
-      // Save user data to Firestore
+      // Save user info
       await setDoc(doc(db, 'users', user.uid), {
         uid: user.uid,
         displayName,
         email,
-        role, // Save the selected role
+        role,
         createdAt: serverTimestamp(),
         lastLogin: serverTimestamp(),
       });
 
-      // Redirect based on role
+      // Send them to the right page
       if (role === 'therapist') {
         navigate('/therapist');
       } else {

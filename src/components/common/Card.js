@@ -1,6 +1,7 @@
 import React from 'react';
 import './Card.css';
 
+// A box that can hold other things and has a title
 function Card({ children, className = '', title }) {
   return (
     <div className={`card ${className}`}>

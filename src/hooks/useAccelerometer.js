@@ -8,103 +8,81 @@ import {
   MockAccelerometer
 } from '../utils/sensorUtils';
 
-// Better check for Accelerometer class
+// See if we can use the phone's motion sensor
 const AccelerometerClass = typeof window !== 'undefined' ? 
   (window.Accelerometer || null) : null;
 
-/**
- * Hook to access device accelerometer data
- * @param {Object} options - Configuration options
- * @returns {Object} Accelerometer data and control functions
- */
+// Get motion data from the phone
 const useAccelerometer = (options = {}) => {
   const {
-    frequency = 60,            // Desired reading frequency in Hz
-    filterCoefficient = 0.2,   // Low-pass filter coefficient
-    useDeviceMotionFallback = true, // Whether to use DeviceMotion API as fallback
-    enabled = true             // Whether the accelerometer is enabled
+    frequency = 60,            // How many readings per second
+    filterCoefficient = 0.2,   // How much to smooth the readings
+    useDeviceMotionFallback = true, // Use backup sensor if main one not available
+    enabled = true             // Whether to track motion
   } = options;
 
-  // State
+  // Keep track of what we find
   const [acceleration, setAcceleration] = useState({ x: 0, y: 0, z: 0, magnitude: 0 });
   const [isAvailable, setIsAvailable] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
   const [error, setError] = useState(null);
   const [usingFallback, setUsingFallback] = useState(false);
 
-  // Refs to manage state across render cycles
+  // Keep track of things between updates
   const sensor = useRef(null);
   const previousValues = useRef({ x: 0, y: 0, z: 0 });
   const deviceMotionListener = useRef(null);
 
-  // Initialize the appropriate sensor
+  // Set up the motion sensor when we start
   useEffect(() => {
     if (!enabled) return;
 
     const initSensor = async () => {
-      // Reset error state
       setError(null);
       
       try {
-        console.log('Initializing accelerometer...');
+        console.log('Setting up motion sensor...');
         
-        // First try to use the Device Motion API as it's more reliable on mobile
-        if (useDeviceMotionFallback && isDeviceMotionSupported()) {
-          console.log('Using DeviceMotion API');
-          initDeviceMotionFallback();
-          return;
-        }
-        
-        // Then try Sensor API if available
+        // Try main sensor first
         if (isSensorsSupported()) {
-          console.log('Sensor API is supported');
+          console.log('Using main sensor');
           
-          // Request permission if needed
           await requestAccelerometerPermission();
           
-          // Check for Accelerometer class
           if (AccelerometerClass) {
-            console.log('Using Accelerometer API');
+            console.log('Using phone motion sensor');
             sensor.current = new AccelerometerClass({ frequency });
           } else {
-            throw new Error('Accelerometer API not available, but should be');
+            console.log('Using test sensor');
+            sensor.current = new MockAccelerometer({ frequency });
+            setUsingFallback(true);
           }
           
-          // Set up error handler
+          // Handle sensor problems
           sensor.current.addEventListener('error', (event) => {
-            console.error('Accelerometer error:', event.error);
-            setError(`Accelerometer error: ${event.error.message}`);
+            console.error('Sensor error:', event.error);
+            setError(`Sensor error: ${event.error.message}`);
             setIsAvailable(false);
             
-            // Try fallback if primary sensor fails
             if (useDeviceMotionFallback) {
+              console.log('Switching to backup sensor');
               initDeviceMotionFallback();
             }
           });
           
-          // Set up reading handler
+          // Handle sensor readings
           sensor.current.addEventListener('reading', () => {
             const { x, y, z } = sensor.current;
-            console.log('Raw accelerometer readings:', { x, y, z });
             
-            // Apply low-pass filter to reduce noise
+            // Make readings smoother
             const filteredX = applyLowPassFilter(x, previousValues.current.x, filterCoefficient);
             const filteredY = applyLowPassFilter(y, previousValues.current.y, filterCoefficient);
             const filteredZ = applyLowPassFilter(z, previousValues.current.z, filterCoefficient);
             
-            // Update previous values for next filter pass
             previousValues.current = { x: filteredX, y: filteredY, z: filteredZ };
             
-            // Calculate magnitude
             const magnitude = calculateAccelerationMagnitude(filteredX, filteredY, filteredZ);
             
-            console.log('Processed accelerometer data:', {
-              filtered: { x: filteredX, y: filteredY, z: filteredZ },
-              magnitude,
-              timestamp: Date.now()
-            });
-            
-            // Update state with new readings
             setAcceleration({
               x: filteredX,
               y: filteredY,
@@ -114,94 +92,60 @@ const useAccelerometer = (options = {}) => {
             });
           });
           
-          // Sensor is available
           setIsAvailable(true);
           setUsingFallback(false);
           
-          // Start the sensor if needed
           if (isRunning) {
-            console.log('Starting accelerometer');
+            console.log('Starting sensor');
             sensor.current.start();
           }
           
           return;
         }
         
-        // If neither is available, set error
-        throw new Error('Accelerometer not supported by this device/browser');
+        // Try backup sensor if main one not available
+        if (useDeviceMotionFallback && isDeviceMotionSupported()) {
+          console.log('Using backup sensor');
+          initDeviceMotionFallback();
+          return;
+        }
+        
+        throw new Error('No motion sensors available');
         
       } catch (err) {
-        console.error('Error initializing accelerometer:', err);
+        console.error('Failed to set up sensor:', err);
+        setError(`Failed to set up sensor: ${err.message}`);
+        setIsAvailable(false);
         
-        // Try fallback if primary method fails
         if (useDeviceMotionFallback && isDeviceMotionSupported() && !usingFallback) {
-          console.log('Trying DeviceMotion fallback after error');
+          console.log('Switching to backup sensor');
           initDeviceMotionFallback();
-        } else {
-          setError(`Error initializing accelerometer: ${err.message}`);
-          setIsAvailable(false);
         }
       }
     };
 
-    // Initialize devicemotion fallback - THIS IS THE CRITICAL PART FOR MOBILE
+    // Set up backup sensor
     const initDeviceMotionFallback = () => {
-      console.log('Setting up DeviceMotion fallback');
+      console.log('Setting up backup sensor');
       setUsingFallback(true);
       
-      // iOS requires permission request for DeviceMotion
-      if (typeof DeviceMotionEvent !== 'undefined' && 
-          typeof DeviceMotionEvent.requestPermission === 'function') {
-        DeviceMotionEvent.requestPermission()
-          .then(permissionState => {
-            if (permissionState === 'granted') {
-              attachDeviceMotionListener();
-            } else {
-              setError('DeviceMotion permission denied');
-              setIsAvailable(false);
-            }
-          })
-          .catch(err => {
-            console.error('Error requesting DeviceMotion permission:', err);
-            // Try to attach anyway, might work on some devices
-            attachDeviceMotionListener();
-          });
-      } else {
-        // For non-iOS devices
-        attachDeviceMotionListener();
-      }
-    };
-    
-    // Function to attach the device motion listener
-    const attachDeviceMotionListener = () => {
-      // Create device motion handler
       deviceMotionListener.current = (event) => {
         if (!event.accelerationIncludingGravity) {
-          console.log('No acceleration data in DeviceMotion event');
+          console.log('No motion data available');
           return;
         }
         
-        // Extract acceleration values
-        const { x = 0, y = 0, z = 0 } = event.accelerationIncludingGravity;
+        const { x, y, z } = event.accelerationIncludingGravity;
         
-        // Apply low-pass filter
-        const filteredX = applyLowPassFilter(x || 0, previousValues.current.x, filterCoefficient);
-        const filteredY = applyLowPassFilter(y || 0, previousValues.current.y, filterCoefficient);
-        const filteredZ = applyLowPassFilter(z || 0, previousValues.current.z, filterCoefficient);
+        // Make readings smoother
+        const filteredX = applyLowPassFilter(x, previousValues.current.x, filterCoefficient);
+        const filteredY = applyLowPassFilter(y, previousValues.current.y, filterCoefficient);
+        const filteredZ = applyLowPassFilter(z, previousValues.current.z, filterCoefficient);
         
-        // Update previous values
         previousValues.current = { x: filteredX, y: filteredY, z: filteredZ };
         
-        // Calculate magnitude
         const magnitude = calculateAccelerationMagnitude(filteredX, filteredY, filteredZ);
         
-        console.log('Processed DeviceMotion data:', {
-          filtered: { x: filteredX, y: filteredY, z: filteredZ },
-          magnitude,
-          timestamp: Date.now()
-        });
-        
-        // Update state
         setAcceleration({
           x: filteredX,
           y: filteredY,
@@ -211,75 +155,63 @@ const useAccelerometer = (options = {}) => {
         });
       };
       
-      // Set as available
       setIsAvailable(true);
       
-      // Attach listener if running
       if (isRunning) {
-        console.log('Attaching DeviceMotion event listener');
+        console.log('Starting backup sensor');
         window.addEventListener('devicemotion', deviceMotionListener.current);
       }
     };
 
-    // Initialize sensors
     initSensor();
     
-    // Cleanup function
+    // Clean up when we're done
     return () => {
-      if (isRunning) {
-        stop();
-      }
+      stop();
       
       if (deviceMotionListener.current) {
         window.removeEventListener('devicemotion', deviceMotionListener.current);
         deviceMotionListener.current = null;
       }
     };
-  }, [enabled, frequency, filterCoefficient, useDeviceMotionFallback, isRunning]);
+  }, [enabled, frequency, filterCoefficient, useDeviceMotionFallback]);
 
-  // Start accelerometer readings
+  // Start tracking motion
   const start = useCallback(() => {
     if (!isAvailable || isRunning) return;
     
     setIsRunning(true);
-    console.log('Starting accelerometer readings...');
     
     try {
       if (usingFallback && deviceMotionListener.current) {
-        console.log('Adding DeviceMotion event listener');
         window.addEventListener('devicemotion', deviceMotionListener.current);
       } else if (sensor.current) {
-        console.log('Starting Accelerometer sensor');
         sensor.current.start();
       }
     } catch (err) {
-      console.error('Error starting accelerometer:', err);
-      setError(`Error starting accelerometer: ${err.message}`);
+      console.error('Failed to start sensor:', err);
+      setError(`Failed to start sensor: ${err.message}`);
     }
   }, [isAvailable, isRunning, usingFallback]);
 
-  // Stop accelerometer readings
+  // Stop tracking motion
   const stop = useCallback(() => {
     if (!isRunning) return;
     
     setIsRunning(false);
-    console.log('Stopping accelerometer readings...');
     
     try {
       if (usingFallback && deviceMotionListener.current) {
-        console.log('Removing DeviceMotion event listener');
         window.removeEventListener('devicemotion', deviceMotionListener.current);
       } else if (sensor.current) {
-        console.log('Stopping Accelerometer sensor');
         sensor.current.stop();
       }
     } catch (err) {
-      console.error('Error stopping accelerometer:', err);
-      setError(`Error stopping accelerometer: ${err.message}`);
+      console.error('Failed to stop sensor:', err);
+      setError(`Failed to stop sensor: ${err.message}`);
     }
   }, [isRunning, usingFallback]);
 
-  // Return API
   return {
     acceleration,
     isAvailable,

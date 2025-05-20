@@ -1,57 +1,49 @@
-/**
- * Utility functions for accessing device sensors
- */
+// Help with using phone sensors
 
-// Add this check at the beginning of the file
+/**
+ * See if we can use the phone's motion sensor
+ */
 const AccelerometerClass = typeof window !== 'undefined' ? 
   (window.Accelerometer || null) : null;
 
 /**
- * Check if sensor APIs are supported in the current browser
- * @returns {boolean} Whether sensors are supported
+ * See if your phone can use motion sensors
  */
 export const isSensorsSupported = () => {
-  // Check for Sensor API support
   return typeof window !== 'undefined' && 'Accelerometer' in window;
 };
 
 /**
- * Check if the browser supports DeviceMotionEvent as fallback
- * @returns {boolean} Whether DeviceMotionEvent is supported
+ * See if we can use the backup motion sensor
  */
 export const isDeviceMotionSupported = () => {
   return typeof window !== 'undefined' && 'DeviceMotionEvent' in window;
 };
 
 /**
- * Check if permissions API is available to request sensor access
- * @returns {boolean} Whether permissions API is available
+ * See if we can ask to use sensors
  */
 export const isPermissionsApiAvailable = () => {
   return typeof navigator !== 'undefined' && 'permissions' in navigator;
 };
 
 /**
- * Request permission to access the accelerometer
- * @returns {Promise<boolean>} Promise resolving to whether permission was granted
+ * Ask to use the motion sensor
  */
 export const requestAccelerometerPermission = async () => {
-  // First check for iOS devicemotion permission (different mechanism)
+  // Check for iPhone/iPad permission first
   if (typeof DeviceMotionEvent !== 'undefined' && 
       typeof DeviceMotionEvent.requestPermission === 'function') {
     try {
       const permission = await DeviceMotionEvent.requestPermission();
       return permission === 'granted';
     } catch (err) {
-      console.error('Error requesting iOS DeviceMotion permission:', err);
-      // Continue to try the generic permission API
+      console.error('Error asking for iPhone motion permission:', err);
     }
   }
   
-  // Then check regular permissions API
+  // Then check regular permission
   if (!isPermissionsApiAvailable()) {
-    // If permissions API isn't available, we'll have to assume permission
-    // and catch errors when trying to use the sensor
     return true;
   }
   
@@ -59,15 +51,14 @@ export const requestAccelerometerPermission = async () => {
     const result = await navigator.permissions.query({ name: 'accelerometer' });
     return result.state === 'granted';
   } catch (error) {
-    console.error('Error requesting accelerometer permission:', error);
+    console.error('Error asking for motion permission:', error);
     return false;
   }
 };
 
 /**
- * Get an accelerometer sensor instance
- * @param {number} frequency - How many readings per second (Hz)
- * @returns {Accelerometer|null} Accelerometer instance or null if not supported
+ * Get a motion sensor to use
+ * @param {number} frequency - How many readings per second
  */
 export const getAccelerometer = (frequency = 60) => {
   if (!isSensorsSupported() || !AccelerometerClass) {
@@ -77,76 +68,60 @@ export const getAccelerometer = (frequency = 60) => {
   try {
     return new AccelerometerClass({ frequency });
   } catch (error) {
-    console.error('Error creating accelerometer:', error);
+    console.error('Error setting up motion sensor:', error);
     return null;
   }
 };
 
 /**
- * Calculate the magnitude of acceleration from x, y, z components
- * @param {number} x - X-axis acceleration
- * @param {number} y - Y-axis acceleration
- * @param {number} z - Z-axis acceleration
- * @returns {number} Magnitude of acceleration
+ * Work out how strong the movement is
  */
 export const calculateAccelerationMagnitude = (x, y, z) => {
   return Math.sqrt(x * x + y * y + z * z);
 };
 
 /**
- * Apply a simple low-pass filter to reduce noise
- * @param {number} currentValue - Current sensor reading
- * @param {number} previousValue - Previous filtered value
- * @param {number} alpha - Filter coefficient (0-1, lower means more filtering)
- * @returns {number} Filtered value
+ * Make the readings smoother by reducing jumpiness
  */
 export const applyLowPassFilter = (currentValue, previousValue, alpha = 0.2) => {
   return previousValue + alpha * (currentValue - previousValue);
 };
 
 /**
- * Detect if device is in motion based on acceleration magnitude
- * @param {number} magnitude - Magnitude of acceleration
- * @param {number} threshold - Threshold to consider as motion
- * @returns {boolean} Whether device is in motion
+ * See if the phone is moving
  */
 export const isInMotion = (magnitude, threshold = 10.5) => {
-  // 9.8 m/s² is approximately 1g (gravity)
-  // We look for deviations from this to detect motion
+  // Normal gravity is about 9.8
+  // We look for changes from this to see if moving
   return Math.abs(magnitude - 9.8) > threshold;
 };
 
 /**
- * Estimate step length based on user height
- * @param {number} heightCm - User's height in centimeters
- * @param {string} gender - User's gender ('male' or 'female')
- * @returns {number} Estimated step length in meters
+ * Guess how long each step is based on height
  */
 export const estimateStepLength = (heightCm, gender = 'neutral') => {
   if (!heightCm || heightCm <= 0) {
-    // Default average step length if no height provided
-    return 0.65; // Reduced from 0.762 to be more conservative
+    return 0.65; // Average step length if no height given
   }
   
-  // Different formulas based on gender - using more conservative multipliers
+  // Different guesses based on gender
   if (gender.toLowerCase() === 'male') {
-    return heightCm * 0.38 / 100; // Reduced from 0.415
+    return heightCm * 0.38 / 100;
   } else if (gender.toLowerCase() === 'female') {
-    return heightCm * 0.37 / 100; // Reduced from 0.413
+    return heightCm * 0.37 / 100;
   } else {
-    return heightCm * 0.375 / 100; // Reduced from 0.414
+    return heightCm * 0.375 / 100;
   }
 };
 
 /**
- * Check if device is mobile/tablet or desktop
- * @returns {boolean} Whether the device is mobile/tablet
+ * See if using a phone or tablet
  */
 export const isMobileOrTablet = () => {
   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 };
 
-// Simulate accelerometer data (for testing or fallback)
+// Fake motion sensor for testing
 export class MockAccelerometer {
   constructor(options = {}) {
     this.frequency = options.frequency || 60;
@@ -158,7 +133,7 @@ export class MockAccelerometer {
     this.active = false;
     this.x = 0;
     this.y = 0;
-    this.z = 9.8; // Default gravity
+    this.z = 9.8; // Normal gravity
     this.timestamp = 0;
     this.interval = null;
   }
@@ -181,28 +156,23 @@ export class MockAccelerometer {
     this.active = true;
     this.timestamp = Date.now();
     
-    // Invoke activate listeners
     this.listeners.activate.forEach(callback => callback());
     
-    // Simulate readings at specified frequency
     const intervalTime = 1000 / this.frequency;
     let stepPhase = 0;
     
     this.interval = setInterval(() => {
-      // Simulate walking motion with a sine wave
-      const amplitude = 2 + Math.random() * 1; // Random amplitude for variation
+      // Make fake walking motion
+      const amplitude = 2 + Math.random() * 1;
       
-      // Adjust sine wave based on step phase
-      stepPhase += (Math.PI / 15); // Adjust phase increment for frequency of steps
+      stepPhase += (Math.PI / 15);
       
-      // Basic sinusoidal pattern for acceleration
-      this.x = amplitude * Math.sin(stepPhase) + (Math.random() * 0.5 - 0.25); // Add noise
-      this.y = amplitude * Math.cos(stepPhase) + (Math.random() * 0.5 - 0.25); // Add noise
-      this.z = 9.8 + amplitude * Math.sin(stepPhase * 2) + (Math.random() * 0.5 - 0.25); // Add noise
+      this.x = amplitude * Math.sin(stepPhase) + (Math.random() * 0.5 - 0.25);
+      this.y = amplitude * Math.cos(stepPhase) + (Math.random() * 0.5 - 0.25);
+      this.z = 9.8 + amplitude * Math.sin(stepPhase * 2) + (Math.random() * 0.5 - 0.25);
       
       this.timestamp = Date.now();
       
-      // Invoke reading listeners
       this.listeners.reading.forEach(callback => callback());
     }, intervalTime);
   }
@@ -218,28 +188,28 @@ export class MockAccelerometer {
   }
 }
 
-// Helper function to get an accelerometer instance (real or mock)
+// Get a motion sensor (real or fake)
 export const getAccelerometerInstance = (options = {}) => {
   if (isSensorsSupported() && AccelerometerClass) {
     return new AccelerometerClass(options);
   } else {
-    console.warn('Accelerometer API not supported, using mock implementation.');
+    console.warn('Motion sensor not available, using fake one');
     return new MockAccelerometer(options);
   }
 };
 
-// Calculate distance from steps
+// Work out distance from steps
 export const calculateDistanceFromSteps = (steps, stepLength = 0.762) => {
   return steps * stepLength / 1000; // Convert to kilometers
 };
 
-// Calculate step length from height
+// Work out step length from height
 export const calculateStepLengthFromHeight = (heightCm, gender = 'neutral') => {
   if (gender === 'male') {
-    return heightCm * 0.415 / 100; // Male average
+    return heightCm * 0.415 / 100;
   } else if (gender === 'female') {
-    return heightCm * 0.413 / 100; // Female average
+    return heightCm * 0.413 / 100;
   } else {
-    return heightCm * 0.414 / 100; // Neutral average
+    return heightCm * 0.414 / 100;
   }
 };

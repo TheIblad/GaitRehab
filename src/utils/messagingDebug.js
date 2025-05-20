@@ -1,13 +1,10 @@
 import { collection, query, where, getDocs, addDoc, serverTimestamp, orderBy, doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
 
-/**
- * Utility for directly querying the messages collection and printing results
- * @param {string} conversationId - The ID of the conversation to check
- */
+// Look at all messages in a chat
 export const debugCheckMessages = async (conversationId) => {
   try {
-    // First try to query with no extra parameters to avoid permissions issues
+    // Get messages from the database
     const messagesQuery = query(
       collection(db, 'messages'),
       where('conversationId', '==', conversationId)
@@ -15,15 +12,14 @@ export const debugCheckMessages = async (conversationId) => {
     
     const querySnapshot = await getDocs(messagesQuery);
     
-    console.log(`DEBUG: Found ${querySnapshot.size} messages for conversation ${conversationId}`);
+    console.log(`Found ${querySnapshot.size} messages in chat ${conversationId}`);
     
-    // Sort messages by clientTimestamp first (since it's more reliable)
+    // Put messages in order by time
     const messages = querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     }));
     
-    // Sort by timestamp or clientTimestamp
     messages.sort((a, b) => {
       const getTimestamp = (msg) => {
         if (msg.timestamp) {
@@ -39,27 +35,25 @@ export const debugCheckMessages = async (conversationId) => {
       return getTimestamp(a) - getTimestamp(b);
     });
     
-    // Print each message
+    // Show each message
     messages.forEach((message) => {
       console.log(`Message ID: ${message.id}`);
-      console.log(`- Sender: ${message.senderId}`);
-      console.log(`- Receiver: ${message.receiverId}`);
-      console.log(`- Content: ${message.content}`);
-      console.log(`- Timestamp:`, message.timestamp);
-      console.log(`- Client Timestamp:`, message.clientTimestamp);
+      console.log(`- From: ${message.senderId}`);
+      console.log(`- To: ${message.receiverId}`);
+      console.log(`- Text: ${message.content}`);
+      console.log(`- Time:`, message.timestamp);
+      console.log(`- Local Time:`, message.clientTimestamp);
       console.log('---');
     });
     
-    return messages.length; // Return the count of messages
+    return messages.length; // Tell us how many messages we found
   } catch (error) {
-    console.error('Error in debug message check:', error);
+    console.error('Error checking messages:', error);
     return 0;
   }
 };
 
-/**
- * Create a test message directly in Firestore
- */
+// Make a test message
 export const createTestMessage = async (senderId, receiverId, content = 'Test Message') => {
   try {
     const conversationId = [senderId, receiverId].sort().join('_');
@@ -75,36 +69,33 @@ export const createTestMessage = async (senderId, receiverId, content = 'Test Me
     
     const docRef = await addDoc(collection(db, 'messages'), messageData);
     
-    console.log(`DEBUG: Created test message with ID: ${docRef.id}`);
+    console.log(`Made test message with ID: ${docRef.id}`);
     
-    // Verify the message was added by fetching it directly
+    // Check if the message was saved
     try {
       const messageRef = doc(db, 'messages', docRef.id);
       const messageDoc = await getDoc(messageRef);
       if (messageDoc.exists()) {
-        console.log('Message verified in database:', messageDoc.data());
+        console.log('Message saved:', messageDoc.data());
       } else {
-        console.warn('Message could not be verified after creation');
+        console.warn('Message not found after saving');
       }
     } catch (verifyError) {
-      console.warn('Error verifying message creation:', verifyError);
+      console.warn('Error checking if message was saved:', verifyError);
     }
     
     return docRef.id;
   } catch (error) {
-    console.error('Error creating test message:', error);
+    console.error('Error making test message:', error);
     return null;
   }
 };
 
-/**
- * Open the browser console and run the following to debug messages:
- * 
- * import { debugCheckMessages, createTestMessage } from './utils/messagingDebug';
- * 
- * // Check existing messages 
- * debugCheckMessages('USER_ID_1_USER_ID_2'); // Replace with actual IDs
- * 
- * // Create a test message
- * createTestMessage('USER_ID_1', 'USER_ID_2', 'This is a test message');
- */ 
+/*
+How to use in the browser console:
+
+import { debugCheckMessages, createTestMessage } from './utils/messagingDebug';
+
+debugCheckMessages('USER_ID_1_USER_ID_2'); // Put in real user IDs
+createTestMessage('USER_ID_1', 'USER_ID_2', 'This is a test message');
+*/ 

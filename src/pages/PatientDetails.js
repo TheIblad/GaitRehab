@@ -8,6 +8,8 @@ import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import { mockPatients } from '../mock/mockTherapistData';
 import AchievementsList from '../components/patient/AchievementsList';
+import TaskAssignModal from '../components/therapist/TaskAssignModal';
+import { useTasks } from '../contexts/TasksContext';
 import './PatientDetails.css';
 
 function PatientDetails() {
@@ -18,7 +20,9 @@ function PatientDetails() {
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showMock, setShowMock] = useState(true); // Default to true to show mock data
-  const [activeTab, setActiveTab] = useState('activities');
+  const [activeTab, setActiveTab] = useState('overview');
+  const [showTaskModal, setShowTaskModal] = useState(false);
+  const { tasks, loading: tasksLoading } = useTasks();
   
   // Added for chart filtering
   const [timeRange, setTimeRange] = useState('week');
@@ -51,6 +55,31 @@ function PatientDetails() {
     
     // Default fallback
     return 'N/A';
+  };
+
+  // Helper function to format dates consistently
+  const formatDate = (date) => {
+    if (!date) return "No date available";
+    
+    // Handle Firestore timestamps
+    if (date.toDate && typeof date.toDate === 'function') {
+      date = date.toDate();
+    } else if (!(date instanceof Date)) {
+      // Try to convert string or timestamp to Date
+      date = new Date(date);
+    }
+    
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      return "Invalid date";
+    }
+    
+    // Format the date
+    return date.toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric'
+    });
   };
 
   useEffect(() => {
@@ -240,6 +269,11 @@ function PatientDetails() {
     const types = new Set(activities.map(activity => activity.type));
     return ['all', ...Array.from(types)];
   }, [activities]);
+
+  // Filter tasks for this patient
+  const patientTasks = useMemo(() => {
+    return tasks.filter(task => task.patientId === patientId);
+  }, [tasks, patientId]);
 
   const handleMessagePatient = () => {
     navigate(`/messages?user=${patientId}`);
@@ -486,10 +520,22 @@ function PatientDetails() {
       <div className="patient-details-tabs">
         <div className="tabs">
           <button 
+            className={`tab ${activeTab === 'overview' ? 'active' : ''}`}
+            onClick={() => setActiveTab('overview')}
+          >
+            Overview
+          </button>
+          <button 
             className={`tab ${activeTab === 'activities' ? 'active' : ''}`}
             onClick={() => setActiveTab('activities')}
           >
             Activities
+          </button>
+          <button 
+            className={`tab ${activeTab === 'tasks' ? 'active' : ''}`}
+            onClick={() => setActiveTab('tasks')}
+          >
+            Tasks
           </button>
           <button 
             className={`tab ${activeTab === 'progress' ? 'active' : ''}`}
@@ -506,6 +552,12 @@ function PatientDetails() {
         </div>
         
         <div className="tab-content">
+          {activeTab === 'overview' && (
+            <div className="overview-tab">
+              {/* Existing overview content */}
+            </div>
+          )}
+          
           {activeTab === 'activities' && (
             <div className="activities-tab">
               <h3>Recent Activities</h3>
@@ -513,6 +565,76 @@ function PatientDetails() {
                 <RecentActivities activities={activities} />
               ) : (
                 <p>No activities recorded yet.</p>
+              )}
+            </div>
+          )}
+          
+          {activeTab === 'tasks' && (
+            <div className="tasks-tab">
+              <div className="tasks-header">
+                <h3>Rehabilitation Tasks</h3>
+                <Button 
+                  variant="primary"
+                  className="assign-task-button"
+                  onClick={() => setShowTaskModal(true)}
+                >
+                  <i className="fas fa-plus"></i> Assign New Task
+                </Button>
+              </div>
+              
+              {tasksLoading ? (
+                <p className="loading-message">Loading tasks...</p>
+              ) : patientTasks.length === 0 ? (
+                <div className="empty-state">
+                  <p>No tasks assigned to this patient yet.</p>
+                  <Button 
+                    variant="primary"
+                    className="assign-task-button"
+                    onClick={() => setShowTaskModal(true)}
+                  >
+                    <i className="fas fa-plus"></i> Assign First Task
+                  </Button>
+                </div>
+              ) : (
+                <div className="tasks-list">
+                  {patientTasks.map(task => {
+                    const isOverdue = !task.completed && new Date(task.dueDate) < new Date();
+                    const isUrgent = !task.completed && new Date(task.dueDate) <= new Date(Date.now() + 2 * 24 * 60 * 60 * 1000);
+                    
+                    return (
+                      <div 
+                        key={task.id} 
+                        className={`task-item ${task.completed ? 'completed' : ''} ${isOverdue ? 'overdue' : ''} ${isUrgent ? 'urgent' : ''}`}
+                      >
+                        <div className="task-item-header">
+                          <h4>{task.title}</h4>
+                          <span className="task-status">
+                            {task.completed 
+                              ? 'Completed' 
+                              : isOverdue 
+                                ? 'Overdue' 
+                                : isUrgent 
+                                  ? 'Due Soon' 
+                                  : `Due: ${formatDate(task.dueDate)}`}
+                          </span>
+                        </div>
+                        
+                        <p className="task-description">{task.description}</p>
+                        
+                        {task.completed && (
+                          <div className="task-completion-details">
+                            <span className="completion-date">
+                              Completed on {formatDate(task.completedAt)}
+                            </span>
+                            {task.notes && (
+                              <p className="completion-notes">{task.notes}</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </div>
           )}
@@ -539,6 +661,14 @@ function PatientDetails() {
           )}
         </div>
       </div>
+      
+      {/* Task Assignment Modal */}
+      <TaskAssignModal 
+        isOpen={showTaskModal}
+        onClose={() => setShowTaskModal(false)}
+        patientId={patientId}
+        patientName={patient?.displayName || 'Patient'}
+      />
     </div>
   );
 }

@@ -1,88 +1,48 @@
-import { 
-  collection, 
-  query, 
-  where, 
-  getDocs, 
-  doc, 
-  getDoc,
-  addDoc,
-  serverTimestamp,
-  orderBy
-} from "firebase/firestore";
-import { db } from "../firebase/config";
+import { collection, addDoc, query, where, getDocs, doc, updateDoc, serverTimestamp, orderBy, getDoc, limit, deleteDoc } from 'firebase/firestore';
+import { db } from '../firebase/config';
 
-// Update fetchUserData to include more debugging and handle name fields better
+// Get your info
 export async function fetchUserData(userId) {
   try {
-    const userDoc = doc(db, "users", userId);
-    const userSnapshot = await getDoc(userDoc);
-
-    if (userSnapshot.exists()) {
-      const data = userSnapshot.data();
-      
-      // Make sure we have a displayName - check various possible fields
-      const userData = { 
-        id: userSnapshot.id, 
-        ...data,
-        // Ensure displayName exists by checking various possible name fields
-        displayName: data.displayName || data.fullName || data.name || data.username || `User ${userId.substr(0, 4)}`
-      };
-      
-      console.log("Fetched user data for ID", userId, ":", userData);
-      return userData;
+    const userRef = doc(db, "users", userId);
+    const userSnap = await getDoc(userRef);
+    
+    if (userSnap.exists()) {
+      return { id: userSnap.id, ...userSnap.data() };
     } else {
-      console.log("No user document found for ID:", userId);
+      console.log("No user data found for ID:", userId);
       return null;
     }
   } catch (error) {
-    console.error("Error fetching user data for ID", userId, ":", error);
+    console.error("Error getting user info:", error);
     return null;
   }
 }
 
-// Get user activities by userId
+// Get all your activities
 export async function fetchUserActivities(userId) {
   try {
     const activitiesQuery = query(
       collection(db, "activities"),
-      where("uid", "==", userId)
+      where("uid", "==", userId),
+      orderBy("timestamp", "desc")
     );
+    
     const querySnapshot = await getDocs(activitiesQuery);
-
+    
     const activities = [];
     querySnapshot.forEach((doc) => {
       activities.push({ id: doc.id, ...doc.data() });
     });
-
+    
     return activities;
   } catch (error) {
-    console.error("Error fetching activities:", error);
+    console.error("Error getting activities:", error);
     return [];
   }
 }
 
-// Get user achievements by userId
-export async function fetchUserAchievements(userId) {
-  try {
-    const achievementsQuery = query(
-      collection(db, "achievements"),
-      where("uid", "==", userId)
-    );
-    const querySnapshot = await getDocs(achievementsQuery);
-
-    const achievements = [];
-    querySnapshot.forEach((doc) => {
-      achievements.push({ id: doc.id, ...doc.data() });
-    });
-
-    return achievements;
-  } catch (error) {
-    console.error("Error fetching achievements:", error);
-    return [];
-  }
-}
-
-// For therapists: Get all patients assigned to a therapist
+// Get all patients for a therapist
 export async function fetchTherapistPatients(therapistId) {
   try {
     const patientsQuery = query(
@@ -90,95 +50,196 @@ export async function fetchTherapistPatients(therapistId) {
       where("role", "==", "patient"),
       where("assignedTherapistId", "==", therapistId)
     );
+    
     const querySnapshot = await getDocs(patientsQuery);
-
+    
     const patients = [];
     querySnapshot.forEach((doc) => {
       patients.push({ id: doc.id, ...doc.data() });
     });
-
+    
     return patients;
   } catch (error) {
-    console.error("Error fetching therapist patients:", error);
+    console.error("Error getting patients:", error);
     return [];
   }
 }
 
-// Fetch messages between two users
-export async function fetchMessages(userId, partnerId) {
-  try {
-    const conversationId = [userId, partnerId].sort().join('_');
-    
-    const messagesQuery = query(
-      collection(db, "messages"),
-      where("conversationId", "==", conversationId),
-      orderBy("timestamp", "asc")
-    );
-    
-    const querySnapshot = await getDocs(messagesQuery);
-    
-    const messages = [];
-    querySnapshot.forEach((doc) => {
-      messages.push({ id: doc.id, ...doc.data() });
-    });
-    
-    console.log(`Fetched ${messages.length} messages for conversation ${conversationId}`);
-    return messages;
-  } catch (error) {
-    console.error("Error fetching messages:", error);
-    return [];
-  }
-}
-
-// Add this new function:
-export async function addActivity(activityData) {
-  try {
-    // Add timestamp if not provided
-    if (!activityData.timestamp) {
-      activityData.timestamp = serverTimestamp();
-    }
-    
-    const docRef = await addDoc(collection(db, "activities"), activityData);
-    console.log("Activity added with ID: ", docRef.id);
-    return { id: docRef.id, ...activityData };
-  } catch (error) {
-    console.error("Error adding activity:", error);
-    throw error;
-  }
-}
-
-// Add achievement for a user
-export async function addAchievement(userId, achievementData) {
-  try {
-    // Ensure we have the required fields
-    const achievement = {
-      uid: userId,
-      earnedAt: serverTimestamp(),
-      ...achievementData
-    };
-    
-    const docRef = await addDoc(collection(db, "achievements"), achievement);
-    console.log("Achievement added with ID: ", docRef.id);
-    return { id: docRef.id, ...achievement };
-  } catch (error) {
-    console.error("Error adding achievement:", error);
-    throw error;
-  }
-}
-
-// Check if user already has a specific achievement by badge name
-export async function hasAchievement(userId, badgeName) {
+// See if you have a badge
+export async function hasAchievement(userId, achievementId) {
   try {
     const achievementsQuery = query(
       collection(db, "achievements"),
-      where("uid", "==", userId),
-      where("badgeName", "==", badgeName)
+      where("userId", "==", userId),
+      where("achievementId", "==", achievementId),
+      limit(1)
     );
     
     const querySnapshot = await getDocs(achievementsQuery);
+    
     return !querySnapshot.empty;
   } catch (error) {
-    console.error("Error checking achievement:", error);
+    console.error("Error checking badge:", error);
+    return false;
+  }
+}
+
+// Give you a badge
+export async function addAchievement(userId, achievementData) {
+  try {
+    // Add user ID to badge info
+    const achievementWithUser = {
+      ...achievementData,
+      userId,
+      earnedAt: serverTimestamp()
+    };
+    
+    const docRef = await addDoc(collection(db, "achievements"), achievementWithUser);
+    
+    // Update user's badge count
+    const userRef = doc(db, "users", userId);
+    const userSnap = await getDoc(userRef);
+    
+    if (userSnap.exists()) {
+      const userData = userSnap.data();
+      const currentCount = userData.achievementCount || 0;
+      
+      await updateDoc(userRef, {
+        achievementCount: currentCount + 1,
+        lastAchievement: serverTimestamp()
+      });
+    }
+    
+    return docRef.id;
+  } catch (error) {
+    console.error("Error giving badge:", error);
+    return null;
+  }
+}
+
+// Get all your badges
+export async function fetchUserAchievements(userId, limitCount = 10) {
+  try {
+    const achievementsQuery = query(
+      collection(db, "achievements"),
+      where("userId", "==", userId),
+      orderBy("earnedAt", "desc"),
+      limit(limitCount)
+    );
+    
+    const querySnapshot = await getDocs(achievementsQuery);
+    
+    const achievements = [];
+    querySnapshot.forEach((doc) => {
+      achievements.push({ id: doc.id, ...doc.data() });
+    });
+    
+    return achievements;
+  } catch (error) {
+    console.error("Error getting badges:", error);
+    return [];
+  }
+}
+
+// Get your tasks
+export async function fetchPatientTasks(patientId) {
+  try {
+    const tasksQuery = query(
+      collection(db, "tasks"),
+      where("patientId", "==", patientId),
+      orderBy("dueDate", "asc")
+    );
+    
+    const querySnapshot = await getDocs(tasksQuery);
+    
+    const tasks = [];
+    querySnapshot.forEach((doc) => {
+      tasks.push({ id: doc.id, ...doc.data() });
+    });
+    
+    console.log(`Got ${tasks.length} tasks for patient ${patientId}`);
+    return tasks;
+  } catch (error) {
+    console.error("Error getting tasks:", error);
+    return [];
+  }
+}
+
+// Get tasks made by a therapist
+export async function fetchTherapistTasks(therapistId) {
+  try {
+    const tasksQuery = query(
+      collection(db, "tasks"),
+      where("therapistId", "==", therapistId),
+      orderBy("dueDate", "asc")
+    );
+    
+    const querySnapshot = await getDocs(tasksQuery);
+    
+    const tasks = [];
+    querySnapshot.forEach((doc) => {
+      tasks.push({ id: doc.id, ...doc.data() });
+    });
+    
+    console.log(`Got ${tasks.length} tasks from therapist ${therapistId}`);
+    return tasks;
+  } catch (error) {
+    console.error("Error getting tasks:", error);
+    return [];
+  }
+}
+
+// Mark a task as done
+export async function completeTask(taskId, completionData = {}) {
+  try {
+    const taskRef = doc(db, "tasks", taskId);
+    await updateDoc(taskRef, {
+      completed: true,
+      completedAt: serverTimestamp(),
+      completionNotes: completionData.notes || '',
+      ...completionData
+    });
+    
+    return true;
+  } catch (error) {
+    console.error("Error marking task done:", error);
+    throw error;
+  }
+}
+
+// Update your progress points
+export async function updateUserProgress(userId, points) {
+  try {
+    const userRef = doc(db, "users", userId);
+    const userSnap = await getDoc(userRef);
+    
+    if (!userSnap.exists()) {
+      console.error("User not found");
+      return false;
+    }
+    
+    const userData = userSnap.data();
+    const currentProgress = userData.progressPoints || 0;
+    const newProgress = currentProgress + points;
+    
+    await updateDoc(userRef, {
+      progressPoints: newProgress,
+      lastProgressUpdate: serverTimestamp()
+    });
+    
+    // Create a progress history entry
+    await addDoc(collection(db, "progressHistory"), {
+      userId,
+      points,
+      reason: "Task Completion",
+      timestamp: serverTimestamp(),
+      previousTotal: currentProgress,
+      newTotal: newProgress
+    });
+    
+    return true;
+  } catch (error) {
+    console.error("Error updating user progress:", error);
     return false;
   }
 }

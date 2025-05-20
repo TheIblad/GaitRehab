@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { fetchUserData } from '../utils/firestoreQueries';
 import './Home.css';
 
+// Show the welcome page
 function Home() {
   const { user } = useAuth();
   const [userData, setUserData] = useState(null);
@@ -14,7 +15,7 @@ function Home() {
     }
   }, [user]);
 
-  // Get the correct dashboard link based on user role
+  // Get the right dashboard link
   const dashboardLink = userData?.role === 'therapist' ? '/therapist' : '/patient';
 
   return (
