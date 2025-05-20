@@ -1,13 +1,13 @@
 {
   "files": {
-    "main.css": "/GaitRehab/static/css/main.52dcb78c.css",
-    "main.js": "/GaitRehab/static/js/main.18e38224.js",
+    "main.css": "/GaitRehab/static/css/main.4a79121a.css",
+    "main.js": "/GaitRehab/static/js/main.d9fa0f36.js",
     "index.html": "/GaitRehab/index.html",
-    "main.52dcb78c.css.map": "/GaitRehab/static/css/main.52dcb78c.css.map",
-    "main.18e38224.js.map": "/GaitRehab/static/js/main.18e38224.js.map"
+    "main.4a79121a.css.map": "/GaitRehab/static/css/main.4a79121a.css.map",
+    "main.d9fa0f36.js.map": "/GaitRehab/static/js/main.d9fa0f36.js.map"
   },
   "entrypoints": [
-    "static/css/main.52dcb78c.css",
-    "static/js/main.18e38224.js"
+    "static/css/main.4a79121a.css",
+    "static/js/main.d9fa0f36.js"
   ]
 }
