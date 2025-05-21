@@ -1,17 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
 import { isSensorsSupported, getAccelerometer } from '../utils/sensorUtils';
 
-// See if we can use the phone's motion sensor
 const AccelerometerClass = typeof window !== 'undefined' ? 
   (window.Accelerometer || null) : null;
 
-// Track how well you're walking
 const useGaitMetrics = (options = {}) => {
   const {
-    windowSize = 200,          // How many readings to keep
-    sampleRate = 60,           // How many readings per second
-    enabled = true,            // Whether to track walking
-    onMetricsUpdated = null    // Run this when we get new info
+    windowSize = 200,          // Size of the rolling window for analysis (samples)
+    sampleRate = 60,           // Expected sample rate in Hz
+    enabled = true,            // Whether the gait analysis is enabled
+    onMetricsUpdated = null    // Callback when metrics are updated
   } = options;
 
   const [symmetry, setSymmetry] = useState(0);
@@ -21,14 +19,14 @@ const useGaitMetrics = (options = {}) => {
   const [error, setError] = useState(null);
   const [usingSensorApi, setUsingSensorApi] = useState(false);
   
-  // Keep track of things between updates
+  // Refs to maintain state between renders
   const sensor = useRef(null);
   const accelerationWindow = useRef([]);
   const stepIntervals = useRef([]);
   const lastStepTime = useRef(0);
   const activityStartTime = useRef(null);
   
-  // Start tracking walking
+  // Start gait analysis
   const start = () => {
     if (!isAvailable || isRunning) return;
     
@@ -38,57 +36,58 @@ const useGaitMetrics = (options = {}) => {
       setIsRunning(true);
       accelerationWindow.current = [];
       stepIntervals.current = [];
-      console.log('Started tracking walking');
+      console.log('Gait metrics analysis started');
     } catch (err) {
-      setError(`Error starting: ${err.message}`);
-      console.error('Error starting:', err);
+      setError(`Error starting gait analysis: ${err.message}`);
+      console.error('Error starting gait analysis:', err);
     }
   };
   
-  // Stop tracking walking
+  // Stop gait analysis
   const stop = () => {
     if (!isRunning || !sensor.current) return;
     
     try {
       sensor.current.stop();
       setIsRunning(false);
-      console.log('Stopped tracking walking');
+      console.log('Gait metrics analysis stopped');
     } catch (err) {
-      setError(`Error stopping: ${err.message}`);
-      console.error('Error stopping:', err);
+      setError(`Error stopping gait analysis: ${err.message}`);
+      console.error('Error stopping gait analysis:', err);
     }
   };
   
-  // Work out how well you're walking
+  // Calculate and update gait metrics
   const updateMetrics = () => {
-    // Need at least 4 steps to work out how well you're walking
+    // Need at least a few step intervals to calculate metrics
     if (stepIntervals.current.length < 4) return;
     
-    // Work out average time between steps
+    // Calculate mean inter-step interval
     const meanInterval = stepIntervals.current.reduce((a, b) => a + b, 0) / stepIntervals.current.length;
     
-    // Work out how much the times vary
+    // Calculate standard deviation of intervals
     const sumOfSquaredDifferences = stepIntervals.current.reduce((sum, interval) => {
       return sum + Math.pow(interval - meanInterval, 2);
     }, 0);
     const stdDev = Math.sqrt(sumOfSquaredDifferences / stepIntervals.current.length);
     
-    // Work out how even your steps are
-    // Higher number means steps are less even
+    // Calculate coefficient of variation as an asymmetry indicator
+    // Higher CV means more variability in step timing, suggesting asymmetry
     const cv = (stdDev / meanInterval) * 100;
     
-    // Convert to a percentage (100% = perfect)
+    // Convert to symmetry percentage (100% - asymmetry)
+    // Capped at 100% and with a minimum threshold
     const symmetryValue = Math.min(100, Math.max(0, 100 - cv));
     
-    // Work out steps per minute
+    // Calculate cadence (steps per minute)
     const elapsedMinutes = (Date.now() - activityStartTime.current) / 60000;
     const stepsPerMinute = stepIntervals.current.length / elapsedMinutes;
     
-    // Save the new numbers
+    // Update state with new metrics
     setSymmetry(Math.round(symmetryValue));
     setCadence(Math.round(stepsPerMinute));
     
-    // Tell parent component about the new numbers
+    // Call the metrics updated callback if provided
     if (onMetricsUpdated) {
       onMetricsUpdated({
         symmetry: Math.round(symmetryValue),
@@ -99,82 +98,84 @@ const useGaitMetrics = (options = {}) => {
     }
   };
   
-  // Set up the motion sensor
+  // Initialize the sensors
   useEffect(() => {
     if (!enabled) return;
     
     const initSensors = async () => {
       try {
-        // See if phone can use motion sensor
+        // Check if the Accelerometer API is available
         if (!isSensorsSupported()) {
-          throw new Error('Phone cannot use motion sensor');
+          throw new Error('Accelerometer not supported by this device/browser');
         }
         
-        // Ask for permission if needed
+        // Request permission if needed
         if ('permissions' in navigator) {
           try {
             const result = await navigator.permissions.query({ name: 'accelerometer' });
             if (result.state === 'denied') {
-              throw new Error('Permission denied');
+              throw new Error('Permission to use accelerometer was denied');
             }
           } catch (permissionErr) {
-            console.warn('Cannot ask for permission, trying anyway:', permissionErr);
+            console.warn('Permission API not supported, continuing anyway:', permissionErr);
           }
         }
         
-        // Set up motion sensor
+        // Create accelerometer with desired frequency
         if (AccelerometerClass) {
           sensor.current = new AccelerometerClass({ frequency: sampleRate });
         } else {
-          throw new Error('Phone cannot use motion sensor');
+          // Use a mock implementation or fallback
+          throw new Error('Accelerometer not supported by this device/browser');
         }
         
-        // Handle sensor errors
+        // Set up the error handler
         sensor.current.addEventListener('error', (event) => {
           setError(`Sensor error: ${event.error.message}`);
           setIsAvailable(false);
           console.error('Sensor error:', event.error);
         });
         
-        // Handle sensor readings
+        // Set up the reading handler
         sensor.current.addEventListener('reading', () => {
           const { x, y, z } = sensor.current;
           
-          // Work out how strong the movement is
+          // Calculate acceleration magnitude
           const magnitude = Math.sqrt(x * x + y * y + z * z);
           
-          // Add to our list of readings
+          // Add to rolling window
           accelerationWindow.current.push(magnitude);
           
-          // Keep list at right size
+          // Keep the window at the desired size
           if (accelerationWindow.current.length > windowSize) {
             accelerationWindow.current.shift();
           }
           
-          // Look for steps
+          // Detect steps using peak detection
+          // This is a simplified approach - could be enhanced with more complex algorithms
           if (accelerationWindow.current.length > 3) {
             const current = magnitude;
             const previous = accelerationWindow.current[accelerationWindow.current.length - 2];
             const beforePrevious = accelerationWindow.current[accelerationWindow.current.length - 3];
             
-            // Check if this looks like a step
-            if (previous > current && previous > beforePrevious && previous > 11) {
+            // Simple peak detection
+            if (previous > current && previous > beforePrevious && previous > 11) { // 11 is a threshold
               const now = Date.now();
               
-              // Work out time since last step
+              // Calculate time since last step
               if (lastStepTime.current > 0) {
                 const interval = now - lastStepTime.current;
                 
-                // Only count steps that make sense (between 0.25 and 2 seconds apart)
+                // Only record intervals that make sense (e.g., 250ms - 2000ms)
                 if (interval > 250 && interval < 2000) {
                   stepIntervals.current.push(interval);
                   
-                  // Keep last 20 steps
+                  // Keep only the last N intervals for analysis
                   if (stepIntervals.current.length > 20) {
                     stepIntervals.current.shift();
                   }
                   
-                  // Update numbers every 4 steps
+                  // Update metrics every few steps
                   if (stepIntervals.current.length % 4 === 0) {
                     updateMetrics();
                   }
@@ -186,20 +187,20 @@ const useGaitMetrics = (options = {}) => {
           }
         });
         
-        // Sensor is ready to use
+        // Sensor is available
         setIsAvailable(true);
         activityStartTime.current = Date.now();
         
       } catch (err) {
-        setError(`Error setting up sensor: ${err.message}`);
+        setError(`Sensor initialization error: ${err.message}`);
         setIsAvailable(false);
-        console.error('Error setting up sensor:', err);
+        console.error('Sensor initialization error:', err);
       }
     };
     
     initSensors();
     
-    // Clean up when done
+    // Cleanup function
     return () => {
       if (sensor.current) {
         try {
@@ -209,15 +210,15 @@ const useGaitMetrics = (options = {}) => {
         }
       }
     };
-  }, [enabled, sampleRate, windowSize]);
+  }, [enabled, sampleRate, windowSize, onMetricsUpdated]);
   
+  // Return the gait metrics API
   return {
     symmetry,
     cadence,
     isAvailable,
     isRunning,
     error,
-    usingSensorApi,
     start,
     stop
   };

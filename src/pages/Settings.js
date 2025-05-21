@@ -3,7 +3,6 @@ import { updateProfile, updateEmail, updatePassword } from 'firebase/auth';
 import { auth } from '../firebase/config';
 import './Settings.css';
 
-// Let users change their info
 function Settings() {
   const user = auth.currentUser;
   const [displayName, setDisplayName] = useState(user?.displayName || '');

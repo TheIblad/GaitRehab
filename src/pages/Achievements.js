@@ -6,7 +6,6 @@ import AchievementsList from '../components/patient/AchievementsList';
 import Card from '../components/common/Card';
 import './Achievements.css';
 
-// Show your badges and achievements
 function Achievements() {
   const { user } = useAuth();
   const [achievements, setAchievements] = useState([]);
@@ -26,7 +25,7 @@ function Achievements() {
         const userAchievements = await fetchUserAchievements(user.uid);
         setAchievements(userAchievements);
         
-        // Work out how many badges you have
+        // Calculate achievement stats
         const totalPossible = Object.keys(ACHIEVEMENTS).length;
         const earned = userAchievements.length;
         const percentage = Math.round((earned / totalPossible) * 100);
@@ -46,7 +45,7 @@ function Achievements() {
     loadAchievements();
   }, [user]);
 
-  // Put badges in groups
+  // Group achievements by category (we could add categories to achievements later)
   const groupedAchievements = {
     earned: achievements,
     locked: Object.values(ACHIEVEMENTS).filter(achievement => 

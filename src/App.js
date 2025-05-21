@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, Navigate, useNavigate, BrowserRouter } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, Navigate, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { auth, db } from './firebase/config';
 import { doc, getDoc } from 'firebase/firestore';
 import { fetchUserData } from './utils/firestoreQueries';
-import { TasksProvider } from './contexts/TasksContext';
 
 // Import Page Components
 import Home from './pages/Home';
@@ -22,7 +21,8 @@ import Achievements from './pages/Achievements';
 // Import Global Styles
 import './index.css';
 
-// Send you to your dashboard
+// --- Dashboard Redirect Component ---
+// This component now correctly runs within the Router context
 function DashboardRedirect() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -34,7 +34,7 @@ function DashboardRedirect() {
     console.log("Auth loading:", authLoading);
     console.log("User:", user?.uid);
 
-    // Stop if we already tried to send you somewhere
+    // Prevent multiple redirect attempts in a single component mount
     if (redirectAttempted) {
       console.log("Already attempted redirect, skipping");
       return;
@@ -62,7 +62,7 @@ function DashboardRedirect() {
           const userData = userSnapshot.data();
           console.log("Dashboard redirect - user role:", userData.role);
           
-          setRedirectAttempted(true); // Stop trying to send you somewhere
+          setRedirectAttempted(true); // Prevent additional redirects
           
           if (userData.role === 'therapist') {
             console.log("Redirecting to therapist dashboard");
@@ -95,7 +95,8 @@ function DashboardRedirect() {
   return <div>Redirecting to your dashboard...</div>;
 }
 
-// Check if you can go to a page
+// --- Role-Based Route Component ---
+// This component now correctly runs within the Router context
 function RoleBasedRoute({ element, requiredRole }) {
   const { user, loading: authLoading } = useAuth(); // Use auth loading state
   const [roleData, setRoleData] = useState(null);
@@ -121,14 +122,14 @@ function RoleBasedRoute({ element, requiredRole }) {
         if (userSnapshot.exists()) {
           const data = userSnapshot.data();
           console.log(`RoleBasedRoute (${requiredRole}) - user role:`, data.role);
-          setRoleData(data); // Keep track of your role
+          setRoleData(data); // Store role data
 
           if (data.role !== requiredRole) {
-            // Send you to your dashboard if you can't go here
+            // Redirect to their actual dashboard if role doesn't match
             navigate(data.role === 'therapist' ? "/therapist" : "/patient", { replace: true });
             return;
           }
-          // You can go here
+          // Role matches, proceed
         } else {
           console.error("User document doesn't exist! Logging out.");
           await auth.signOut();
@@ -136,7 +137,7 @@ function RoleBasedRoute({ element, requiredRole }) {
         }
       } catch (error) {
         console.error("Error in role validation:", error);
-        navigate("/login", { replace: true }); // Send you to login if there's an error
+        navigate("/login", { replace: true }); // Redirect on error
       } finally {
         setRoleLoading(false);
       }
@@ -149,28 +150,29 @@ function RoleBasedRoute({ element, requiredRole }) {
     return <div>Verifying access...</div>;
   }
 
-  // Show the page if you can go here
+  // Render the element only if auth is done, role check is done, and role matches
   if (roleData && roleData.role === requiredRole) {
     return element;
   }
 
-  // Show nothing while sending you somewhere else
+  // Return null or a loading indicator if redirection is happening
   return null;
 }
 
-// Main app content
+// --- Main App Content Component ---
+// This component now correctly runs within the Router context
 function AppContent() {
   const [menuOpen, setMenuOpen] = useState(false);
   const { user, loading: authLoading } = useAuth(); // Use auth loading state
   const [userData, setUserData] = useState(null);
   const navigate = useNavigate(); // useNavigate is now valid here
 
-  // Get your info when you log in
+  // Fetch user data only when auth is confirmed and user exists
   useEffect(() => {
     if (!authLoading && user) {
       fetchUserData(user.uid).then(data => setUserData(data));
     } else if (!authLoading && !user) {
-      setUserData(null); // Clear your info when you log out
+      setUserData(null); // Clear user data on logout
     }
     // Dependency: authLoading and user
   }, [user, authLoading]);
@@ -182,16 +184,16 @@ function AppContent() {
   const handleSignOut = async () => {
     try {
       await auth.signOut();
-      // Send you to home page
+      // Navigate should work reliably now
       navigate('/');
     } catch (error) {
       console.error('Error signing out:', error);
-      // Try another way if the first way fails
+      // Fallback if navigate fails for some reason
       window.location.href = '/';
     }
   };
 
-  // Show loading while we check if you're logged in
+  // Don't render the main layout until auth state is resolved
   if (authLoading) {
      return <div>Loading Application...</div>; // Or a proper spinner component
   }
@@ -215,7 +217,7 @@ function AppContent() {
             {user ? (
               <>
                 <li>
-                  {/* Link to your dashboard */}
+                  {/* Link directly to the user's dashboard */}
                   <Link to={userData?.role === 'therapist' ? '/therapist' : '/patient'} onClick={() => setMenuOpen(false)}>
                     Dashboard
                   </Link>
@@ -248,7 +250,7 @@ function AppContent() {
                   </Link>
                 </li>
                 <li>
-                  <button onClick={handleSignOut}>
+                  <button onClick={handleSignOut} className="signout-btn">
                     Sign Out
                   </button>
                 </li>
@@ -270,107 +272,80 @@ function AppContent() {
           </ul>
         </nav>
       </header>
-
       <main>
         <Routes>
+          {/* Public Routes */}
           <Route path="/" element={<Home />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/dashboard" element={<DashboardRedirect />} />
-          
-          {/* Patient Routes */}
+          <Route path="/login" element={!user ? <Login /> : <Navigate to="/dashboard" />} />
+          <Route path="/register" element={!user ? <Register /> : <Navigate to="/dashboard" />} />
+
+          {/* Redirect /dashboard */}
+          {/* Ensure this route is only accessible when logged in */}
           <Route 
-            path="/patient" 
+            path="/dashboard" 
             element={
-              <RoleBasedRoute 
-                element={<PatientHome />} 
-                requiredRole="patient" 
-              />
+              authLoading ? (
+                <div>Loading authentication...</div>
+              ) : user ? (
+                <DashboardRedirect />
+              ) : (
+                <Navigate to="/login" />
+              )
             } 
           />
-          
-          {/* Therapist Routes */}
-          <Route 
-            path="/therapist" 
-            element={
-              <RoleBasedRoute 
-                element={<TherapistHome />} 
-                requiredRole="therapist" 
-              />
-            } 
+
+          {/* Role-Protected Routes */}
+          <Route
+            path="/patient"
+            element={<RoleBasedRoute element={<PatientHome />} requiredRole="patient" />}
           />
-          <Route 
-            path="/progress" 
-            element={
-              <RoleBasedRoute 
-                element={<Progress />} 
-                requiredRole="therapist" 
-              />
-            } 
+          <Route
+            path="/therapist"
+            element={<RoleBasedRoute element={<TherapistHome />} requiredRole="therapist" />}
           />
-          <Route 
-            path="/patient/:id" 
-            element={
-              <RoleBasedRoute 
-                element={<PatientDetails />} 
-                requiredRole="therapist" 
-              />
-            } 
+           <Route
+             path="/progress"
+             element={<RoleBasedRoute element={<Progress />} requiredRole="therapist" />}
+           />
+          <Route
+            path="/patient-details"
+            element={user ? <PatientDetails /> : <Navigate to="/login" />}
           />
-          
-          {/* Shared Routes */}
-          <Route 
-            path="/messages" 
-            element={
-              <RoleBasedRoute 
-                element={<Messages />} 
-                requiredRole={userData?.role || 'patient'} 
-              />
-            } 
+
+          {/* General Authenticated Routes */}
+          <Route
+            path="/messages"
+            element={user ? <Messages /> : <Navigate to="/login" />}
           />
-          <Route 
-            path="/contacts" 
-            element={
-              <RoleBasedRoute 
-                element={<Contacts />} 
-                requiredRole={userData?.role || 'patient'} 
-              />
-            } 
+          <Route
+            path="/contacts"
+            element={user ? <Contacts /> : <Navigate to="/login" />}
           />
-          <Route 
-            path="/settings" 
-            element={
-              <RoleBasedRoute 
-                element={<Settings />} 
-                requiredRole={userData?.role || 'patient'} 
-              />
-            } 
+          <Route
+            path="/settings"
+            element={user ? <Settings /> : <Navigate to="/login" />}
           />
-          <Route 
-            path="/achievements" 
-            element={
-              <RoleBasedRoute 
-                element={<Achievements />} 
-                requiredRole={userData?.role || 'patient'} 
-              />
-            } 
+          <Route
+            path="/achievements"
+            element={user ? <Achievements /> : <Navigate to="/login" />}
           />
+
+          {/* Catch-all for Not Found */}
+          <Route path="*" element={<div>404 - Page Not Found</div>} />
         </Routes>
       </main>
     </>
   );
 }
 
-// Main app
+// --- Main App Component ---
 function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <TasksProvider>
-          <AppContent />
-        </TasksProvider>
-      </AuthProvider>
-    </BrowserRouter>
+    <AuthProvider> {/* AuthProvider wraps Router */}
+      <Router> {/* Router now wraps AppContent */}
+        <AppContent />
+      </Router>
+    </AuthProvider>
   );
 }
 

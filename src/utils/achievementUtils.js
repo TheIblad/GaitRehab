@@ -1,6 +1,6 @@
 import { addAchievement, hasAchievement, fetchUserActivities } from './firestoreQueries';
 
-// Badges you can earn
+// List of available achievements with their criteria and icons
 export const ACHIEVEMENTS = {
   FIRST_ACTIVITY: {
     badgeName: "First Activity",
@@ -44,15 +44,15 @@ export const ACHIEVEMENTS = {
   }
 };
 
-// See if you earned any badges after doing an activity
+// Check and award achievements based on a completed activity
 export async function checkActivityAchievements(userId, activityData) {
   try {
-    // Get all your activities to check for badges
+    // Get user's activities to check for milestone achievements
     const activities = await fetchUserActivities(userId);
     
     const newAchievements = [];
     
-    // First activity badge
+    // First activity achievement
     if (activities.length === 1) {
       const alreadyHas = await hasAchievement(userId, ACHIEVEMENTS.FIRST_ACTIVITY.badgeName);
       if (!alreadyHas) {
@@ -61,7 +61,7 @@ export async function checkActivityAchievements(userId, activityData) {
       }
     }
     
-    // Step Master badge
+    // Step Master achievement
     if (activityData.steps >= 10000) {
       const alreadyHas = await hasAchievement(userId, ACHIEVEMENTS.STEP_MASTER.badgeName);
       if (!alreadyHas) {
@@ -70,7 +70,7 @@ export async function checkActivityAchievements(userId, activityData) {
       }
     }
     
-    // Symmetry Expert badge
+    // Symmetry Expert achievement
     if (activityData.symmetry >= 90) {
       const alreadyHas = await hasAchievement(userId, ACHIEVEMENTS.SYMMETRY_EXPERT.badgeName);
       if (!alreadyHas) {
@@ -79,7 +79,7 @@ export async function checkActivityAchievements(userId, activityData) {
       }
     }
     
-    // Early Bird badge
+    // Early Bird achievement
     const activityHour = activityData.timestamp?.toDate?.() 
       ? activityData.timestamp.toDate().getHours() 
       : new Date().getHours();
@@ -92,7 +92,7 @@ export async function checkActivityAchievements(userId, activityData) {
       }
     }
     
-    // Night Owl badge
+    // Night Owl achievement
     if (activityHour >= 20) {
       const alreadyHas = await hasAchievement(userId, ACHIEVEMENTS.NIGHT_OWL.badgeName);
       if (!alreadyHas) {
@@ -101,7 +101,7 @@ export async function checkActivityAchievements(userId, activityData) {
       }
     }
     
-    // Consistency King badge (30 activities)
+    // Consistency King achievement (30 activities)
     if (activities.length === 30) {
       const alreadyHas = await hasAchievement(userId, ACHIEVEMENTS.CONSISTENCY_KING.badgeName);
       if (!alreadyHas) {
@@ -110,7 +110,7 @@ export async function checkActivityAchievements(userId, activityData) {
       }
     }
     
-    // Distance Champion badge
+    // Distance Champion achievement
     const totalDistance = activities.reduce((sum, activity) => {
       return sum + (parseFloat(activity.distance) || 0);
     }, 0);
@@ -123,34 +123,34 @@ export async function checkActivityAchievements(userId, activityData) {
       }
     }
     
-    // Check for streak badge
+    // Check for streak achievement
     await checkStreakAchievement(userId, activities);
     
     return newAchievements;
   } catch (error) {
-    console.error("Error checking badges:", error);
+    console.error("Error checking achievements:", error);
     return [];
   }
 }
 
-// See if you earned the streak badge
+// Helper function to check for streak achievements
 async function checkStreakAchievement(userId, activities) {
   try {
-    // Already has the badge
+    // Already has the achievement
     const alreadyHas = await hasAchievement(userId, ACHIEVEMENTS.SEVEN_DAY_STREAK.badgeName);
     if (alreadyHas) return null;
     
     // Need at least 7 activities to have a streak
     if (activities.length < 7) return null;
     
-    // Put activities in order by date
+    // Sort activities by date
     const sortedActivities = [...activities].sort((a, b) => {
       const dateA = a.timestamp?.toDate?.() ? a.timestamp.toDate() : new Date(a.timestamp);
       const dateB = b.timestamp?.toDate?.() ? b.timestamp.toDate() : new Date(b.timestamp);
       return dateB - dateA;
     });
     
-    // Put activities in groups by day
+    // Group activities by day
     const activityDays = new Set();
     sortedActivities.forEach(activity => {
       const date = activity.timestamp?.toDate?.() 
@@ -161,27 +161,27 @@ async function checkStreakAchievement(userId, activities) {
       activityDays.add(dayKey);
     });
     
-    // Turn into a list and sort
+    // Convert to array and sort
     const dayArray = Array.from(activityDays).sort().reverse();
     
-    // Look for 7 days in a row
+    // Check for 7 consecutive days
     let currentStreak = 1;
     for (let i = 0; i < dayArray.length - 1; i++) {
       const [currentYear, currentMonth, currentDay] = dayArray[i].split('-').map(Number);
       const [nextYear, nextMonth, nextDay] = dayArray[i + 1].split('-').map(Number);
       
-      // Make date objects to compare
+      // Create date objects to compare
       const currentDate = new Date(currentYear, currentMonth, currentDay);
       const nextDate = new Date(nextYear, nextMonth, nextDay);
       
-      // Work out days between activities
+      // Calculate difference in days
       const diffTime = currentDate.getTime() - nextDate.getTime();
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
       
       if (diffDays === 1) {
         currentStreak++;
         if (currentStreak >= 7) {
-          // Give the badge
+          // Award the achievement
           return await addAchievement(userId, ACHIEVEMENTS.SEVEN_DAY_STREAK);
         }
       } else {
@@ -192,7 +192,7 @@ async function checkStreakAchievement(userId, activities) {
     
     return null;
   } catch (error) {
-    console.error("Error checking streak badge:", error);
+    console.error("Error checking streak achievement:", error);
     return null;
   }
 } 

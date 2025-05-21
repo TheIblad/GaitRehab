@@ -1,4 +1,33 @@
-/* Reset and text styles */
+/* Global reset & typography */
+:root {
+  --primary-color: #007bff;
+  --primary-color-dark: #0056b3;
+  --secondary-color: #6b7280;
+  --secondary-color-dark: #4b5563;
+  --accent-color: #10b981;
+  --danger-color: #ef4444;
+  --warning-color: #f59e0b;
+  
+  --text-primary: #111827;
+  --text-secondary: #374151;
+  --text-muted: #6b7280;
+  
+  --bg-primary: #ffffff;
+  --bg-secondary: #f3f4f6;
+  --bg-tertiary: #e5e7eb;
+  
+  --border-color: #d1d5db;
+  --border-color-light: #e5e7eb;
+  
+  --border-radius-sm: 4px;
+  --border-radius-md: 8px;
+  --border-radius-lg: 12px;
+  
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -11,7 +40,7 @@ body {
   line-height: 1.6;
 }
 
-/* Top bar styles */
+/* Header Styles */
 header {
   position: sticky;
   top: 0;
@@ -46,7 +75,7 @@ nav ul li a:hover {
   border-bottom: 2px solid #007bff;
 }
 
-/* Menu button for small screens */
+/* Mobile Navigation */
 .hamburger {
   display: none;
   flex-direction: column;
@@ -61,7 +90,7 @@ nav ul li a:hover {
   transition: all 0.3s;
 }
 
-/* Menu for small screens */
+/* Responsive navigation */
 @media (max-width: 768px) {
   nav ul {
     flex-direction: column;
@@ -81,12 +110,12 @@ nav ul li a:hover {
   }
 }
 
-/* Main area */
+/* Main Content */
 main {
   padding: 20px;
 }
 
-/* Big banner */
+/* Hero Section */
 .hero {
   background: url('https://via.placeholder.com/1500') no-repeat center center/cover;
   padding: 100px 20px;
@@ -117,7 +146,7 @@ main {
   background-color: #0056b3;
 }
 
-/* Boxes for features */
+/* Cards for features */
 .cards-container {
   display: flex;
   gap: 20px;
@@ -139,7 +168,7 @@ main {
   transform: translateY(-5px);
 }
 
-/* Form styles */
+/* Form Styles */
 form {
   max-width: 400px;
   margin: 20px auto;
@@ -186,7 +215,7 @@ form button:hover {
   background-color: #0056b3;
 }
 
-/* Bottom bar */
+/* Footer Styles */
 footer {
   background-color: #333;
   color: #fff;
@@ -205,7 +234,7 @@ footer a:hover {
   color: #007bff;
 }
 
-/* Up button */
+/* Back-to-top button */
 #back-to-top {
   position: fixed;
   bottom: 30px;
@@ -224,7 +253,7 @@ footer a:hover {
   background: #0056b3;
 }
 
-/* Sign out button */
+/* Signout Button */
 .signout-btn {
   background: none;
   border: none;

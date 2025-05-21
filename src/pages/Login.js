@@ -3,10 +3,9 @@ import { useNavigate, Link } from 'react-router-dom';
 import Button from '../components/common/Button';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../firebase/config';
-import { fetchUserData } from '../utils/firestoreQueries';
+import { fetchUserData } from '../utils/firestoreQueries'; // Add this import
 import './Login.css';
 
-// Let users log in to their account
 function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -21,7 +20,7 @@ function Login() {
 
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      // Get user info to see where to send them
+      // Fetch user data to get the role
       const userData = await fetchUserData(auth.currentUser.uid);
       if (userData?.role === 'therapist') {
         navigate('/therapist');

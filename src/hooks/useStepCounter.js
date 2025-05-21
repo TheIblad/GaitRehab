@@ -2,19 +2,21 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import useAccelerometer from './useAccelerometer';
 import { estimateStepLength } from '../utils/sensorUtils';
 
-// Count steps and distance using phone motion
+/**
+ * Hook to count steps and calculate distance using device motion sensors
+ */
 const useStepCounter = (options = {}) => {
   const {
-    stepThreshold = 3.0,       // How much movement counts as a step
-    stepCooldown = 250,        // Time between steps (ms)
-    userHeight = 170,          // Height in cm for step length
-    userGender = 'neutral',    // Gender for step length
-    filterCoefficient = 0.5,   // How much to smooth the readings
-    onStepDetected = null,     // Run this when a step is found
-    enabled = true             // Whether to count steps
+    stepThreshold = 10.0,       // Increase threshold to be less sensitive (was 3.0)
+    stepCooldown = 400,        // Increase cooldown to prevent rapid counting (was 250)
+    userHeight = 170,          // User height in cm for step length calculation
+    userGender = 'neutral',    // User gender for step length calculation
+    filterCoefficient = 0.3,   // Reduce coefficient for more smoothing (was 0.5)
+    onStepDetected = null,     // Callback when a step is detected
+    enabled = true             // Whether the step counter is enabled
   } = options;
 
-  // Keep track of numbers
+  // State
   const [steps, setSteps] = useState(0);
   const [distance, setDistance] = useState(0);
   const [cadence, setCadence] = useState(0);
@@ -22,14 +24,16 @@ const useStepCounter = (options = {}) => {
   const [sessionStartTime, setSessionStartTime] = useState(null);
   const [symmetry, setSymmetry] = useState(0);
   
-  // Keep track of values between updates
+  // Refs for tracking between renders
   const lastStepTime = useRef(0);
+  const peakDetected = useRef(false); // Track if we're currently in a peak
   const stepIntervals = useRef([]);
   const stepTimeHistory = useRef([]);
   const startTime = useRef(null);
   const stepLengthMeters = useRef(estimateStepLength(userHeight, userGender));
+  const lastMagnitudes = useRef([]);  // Store recent magnitude values for peak detection
   
-  // Get motion data from the phone
+  // Use the accelerometer hook
   const {
     acceleration,
     isAvailable,
@@ -43,106 +47,124 @@ const useStepCounter = (options = {}) => {
     enabled
   });
   
-  // Look for steps in the motion data
+  // Step detection algorithm
   useEffect(() => {
     if (!isActive || !isRunning) return;
     
     const now = Date.now();
     const { magnitude } = acceleration;
     
-    // Check if enough time has passed since last step
+    // Add magnitude to history, keeping last 5 values
+    lastMagnitudes.current.push(magnitude);
+    if (lastMagnitudes.current.length > 5) {
+      lastMagnitudes.current.shift();
+    }
+    
+    // Check if we're past the cooldown period
     const timeSinceLastStep = now - lastStepTime.current;
     
     if (timeSinceLastStep > stepCooldown) {
-      // Check if movement is big enough to be a step
-      if (magnitude > stepThreshold) {
-        // Check if movement is different enough from normal
-        const isSignificantChange = Math.abs(magnitude - 9.8) > 5;
+      // Improved peak detection algorithm
+      const isPeak = magnitude > stepThreshold && 
+                     !peakDetected.current &&
+                     lastMagnitudes.current.length >= 3;
+      
+      if (isPeak) {
+        // Mark that we've detected a peak
+        peakDetected.current = true;
         
-        if (isSignificantChange) {
-          // Count the step
-          setSteps(prevSteps => {
-            const newSteps = prevSteps + 1;
-            
-            // Work out distance
-            const newDistance = (newSteps * stepLengthMeters.current) / 1000; // Convert to km
-            setDistance(newDistance);
-            
-            // Work out steps per minute
-            if (lastStepTime.current > 0) {
-              const interval = timeSinceLastStep;
-              stepIntervals.current.push(interval);
-              
-              // Keep last 10 intervals
-              if (stepIntervals.current.length > 10) {
-                stepIntervals.current.shift();
-              }
-              
-              // Keep track of step times
-              stepTimeHistory.current.push({
-                timestamp: now,
-                interval: interval
-              });
-              
-              // Keep last 20 steps
-              if (stepTimeHistory.current.length > 20) {
-                stepTimeHistory.current.shift();
-              }
-              
-              // Work out steps per minute
-              const avgInterval = stepIntervals.current.reduce((a, b) => a + b, 0) / stepIntervals.current.length;
-              const stepsPerMinute = Math.round(60000 / avgInterval);
-              setCadence(stepsPerMinute);
-              
-              // Work out how even the steps are
-              if (stepTimeHistory.current.length >= 4) {
-                calculateSymmetry();
-              }
-            }
-            
-            // Tell parent component about the step
-            if (onStepDetected) {
-              onStepDetected({
-                steps: newSteps,
-                distance: newDistance,
-                timestamp: now
-              });
-            }
-            
-            return newSteps;
-          });
+        // Increment step count
+        setSteps(prevSteps => {
+          const newSteps = prevSteps + 1;
           
-          lastStepTime.current = now;
-        }
+          // Update distance based on step length
+          const newDistance = (newSteps * stepLengthMeters.current) / 1000; // Convert to kilometers
+          setDistance(newDistance);
+          
+          // Record step interval for cadence calculation
+          if (lastStepTime.current > 0) {
+            const interval = timeSinceLastStep;
+            stepIntervals.current.push(interval);
+            
+            // Keep last 10 intervals for calculations
+            if (stepIntervals.current.length > 10) {
+              stepIntervals.current.shift();
+            }
+            
+            // Record step time for symmetry analysis
+            stepTimeHistory.current.push({
+              timestamp: now,
+              interval: interval
+            });
+            
+            // Keep last 20 steps for symmetry calculation
+            if (stepTimeHistory.current.length > 20) {
+              stepTimeHistory.current.shift();
+            }
+            
+            // Calculate cadence (steps per minute)
+            const avgInterval = stepIntervals.current.reduce((a, b) => a + b, 0) / stepIntervals.current.length;
+            const stepsPerMinute = Math.round(60000 / avgInterval);
+            setCadence(stepsPerMinute);
+            
+            // Calculate symmetry at regular intervals
+            if (stepTimeHistory.current.length >= 4 && newSteps % 2 === 0) {
+              calculateSymmetry();
+            }
+          }
+          
+          // Fire callback if provided
+          if (onStepDetected) {
+            onStepDetected({
+              steps: newSteps,
+              timestamp: now
+            });
+          }
+          
+          return newSteps;
+        });
+        
+        // Update last step time
+        lastStepTime.current = now;
+      } else if (magnitude < stepThreshold * 0.6) {
+        // Reset peak detection when magnitude drops significantly below threshold
+        peakDetected.current = false;
       }
     }
   }, [acceleration, isActive, isRunning, onStepDetected, stepCooldown, stepThreshold]);
   
-  // Work out how even the steps are
+  // Calculate gait symmetry from step intervals
   const calculateSymmetry = () => {
-    if (stepTimeHistory.current.length < 4) return;
+    if (stepTimeHistory.current.length < 4) return; // Need at least 4 steps
     
-    // Work out average time between steps
+    // Calculate mean interval
     const intervals = stepTimeHistory.current.map(step => step.interval);
     const mean = intervals.reduce((a, b) => a + b, 0) / intervals.length;
     
-    // Work out how much the times vary
+    if (mean === 0) return; // Avoid division by zero
+    
+    // Calculate standard deviation
     const squaredDiffs = intervals.map(interval => Math.pow(interval - mean, 2));
     const variance = squaredDiffs.reduce((a, b) => a + b, 0) / intervals.length;
     const stdDev = Math.sqrt(variance);
     
-    // Work out how consistent the steps are
+    // Calculate coefficient of variation (CV)
     const cv = (stdDev / mean) * 100;
     
-    // Convert to a percentage (100% = perfect)
-    const symmetryValue = Math.min(100, Math.max(0, 100 - cv));
+    // Improve the symmetry calculation - the current approach makes it almost always 0
+    // Lower CV means more consistent steps, which suggests better symmetry
+    // Scale this more realistically - an excellent CV of 10% should map to high symmetry (90%)
+    const symmetryValue = Math.min(100, Math.max(0, Math.round(100 - cv/2)));
     
-    console.log("Step symmetry:", Math.round(symmetryValue), "% from", intervals.length, "steps");
+    console.log("Raw CV:", cv);
+    console.log("Calculated symmetry:", symmetryValue, "% from", intervals.length, "intervals");
     
-    setSymmetry(Math.round(symmetryValue));
+    // Ensure we're getting a reasonable range: typical values should be 50-90%
+    // Even with poor symmetry, values shouldn't be constantly near zero
+    setSymmetry(symmetryValue);
   };
   
-  // Start counting steps
+  // Start the step counter
   const start = useCallback(() => {
     if (!isAvailable) return;
     
@@ -153,6 +175,8 @@ const useStepCounter = (options = {}) => {
     lastStepTime.current = 0;
     stepIntervals.current = [];
     stepTimeHistory.current = [];
+    lastMagnitudes.current = [];
+    peakDetected.current = false;
     
     // Reset counters
     setSteps(0);
@@ -161,13 +185,13 @@ const useStepCounter = (options = {}) => {
     setSymmetry(0);
   }, [isAvailable, startAccelerometer]);
   
-  // Stop counting steps
+  // Stop the step counter
   const stop = useCallback(() => {
     stopAccelerometer();
     setIsActive(false);
   }, [stopAccelerometer]);
   
-  // Reset counters
+  // Reset the step counter
   const reset = useCallback(() => {
     setSteps(0);
     setDistance(0);
@@ -176,20 +200,22 @@ const useStepCounter = (options = {}) => {
     lastStepTime.current = 0;
     stepIntervals.current = [];
     stepTimeHistory.current = [];
+    lastMagnitudes.current = [];
+    peakDetected.current = false;
     startTime.current = isActive ? Date.now() : null;
   }, [isActive]);
   
-  // Work out how long the session has been running
+  // Calculate session duration in seconds
   const getSessionDuration = useCallback(() => {
     if (!sessionStartTime) return 0;
     return Math.floor((Date.now() - sessionStartTime) / 1000);
   }, [sessionStartTime]);
   
-  // Get all the stats for this session
+  // Get current session stats
   const getSessionStats = useCallback(() => {
     return {
       steps,
-      distance,
+      distance, // Return raw distance in km
       cadence,
       symmetry,
       duration: getSessionDuration(),
@@ -198,16 +224,22 @@ const useStepCounter = (options = {}) => {
     };
   }, [steps, distance, cadence, symmetry, getSessionDuration, sessionStartTime, usingFallback]);
   
+  // Update step length if user height or gender changes
+  useEffect(() => {
+    stepLengthMeters.current = estimateStepLength(userHeight, userGender);
+  }, [userHeight, userGender]);
+  
   return {
     steps,
     distance,
     cadence,
     symmetry,
-    isActive,
     isAvailable,
+    isActive,
     isRunning,
     error: accelerometerError,
     usingFallback,
+    acceleration,
     start,
     stop,
     reset,

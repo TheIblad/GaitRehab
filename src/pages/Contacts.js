@@ -17,7 +17,6 @@ import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import './Contacts.css';
 
-// Show your contacts and let you add new ones
 function Contacts() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -28,7 +27,7 @@ function Contacts() {
   const [currentUserData, setCurrentUserData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Get your info and contacts when you start
+  // Fetch current user data and contacts on mount
   useEffect(() => {
     if (!user) {
       setLoading(false);
@@ -44,9 +43,9 @@ function Contacts() {
           const userData = userSnap.data();
           setCurrentUserData(userData);
           
-          // Get your contacts
+          // Fetch contacts
           if (userData.role === 'therapist') {
-            // Get your patients
+            // For therapists, fetch their patients
             const patientsQuery = query(
               collection(db, 'users'),
               where('assignedTherapistId', '==', user.uid)
@@ -60,7 +59,7 @@ function Contacts() {
             
             setContacts(patientsList);
           } else {
-            // Get your therapist
+            // For patients, fetch their therapist if assigned
             if (userData.assignedTherapistId) {
               const therapistDoc = await getDoc(doc(db, 'users', userData.assignedTherapistId));
               if (therapistDoc.exists()) {
@@ -80,7 +79,7 @@ function Contacts() {
     fetchUserData();
   }, [user]);
 
-  // Look for users
+  // Search for users
   const handleSearch = async () => {
     if (!searchTerm.trim() || !user) return;
     
@@ -88,33 +87,33 @@ function Contacts() {
     setSearchResults([]);
     
     try {
-      // Look by name
+      // Search by display name (case insensitive would require a different approach in Firestore)
       const nameQuery = query(
         collection(db, 'users'),
         where('displayName', '>=', searchTerm),
         where('displayName', '<=', searchTerm + '\uf8ff')
       );
       
-      // Look by email if it looks like an email
+      // Also search by email if the search term looks like an email
       const emailQuery = searchTerm.includes('@') ? 
         query(collection(db, 'users'), where('email', '==', searchTerm.toLowerCase())) : null;
       
       const nameSnapshot = await getDocs(nameQuery);
       const results = [];
       
-      // Add name results
+      // Add name query results
       nameSnapshot.forEach((doc) => {
-        // Don't show yourself
+        // Don't include the current user in results
         if (doc.id !== user.uid) {
           results.push({ id: doc.id, ...doc.data() });
         }
       });
       
-      // Add email results if we looked by email
+      // Add email query results if we did that search
       if (emailQuery) {
         const emailSnapshot = await getDocs(emailQuery);
         emailSnapshot.forEach((doc) => {
-          // Don't show yourself or duplicates
+          // Check if this user is already in the results and not the current user
           if (doc.id !== user.uid && !results.some(r => r.id === doc.id)) {
             results.push({ id: doc.id, ...doc.data() });
           }
@@ -129,7 +128,7 @@ function Contacts() {
     }
   };
 
-  // Add a new contact
+  // Connect with a user
   const handleConnect = async (targetUser) => {
     if (!user || !currentUserData || !targetUser) return;
     
@@ -138,14 +137,14 @@ function Contacts() {
       const isTargetUserPatient = targetUser.role === 'patient';
       const isTargetUserTherapist = targetUser.role === 'therapist';
       
-      // Let therapist add a patient
+      // Handle Therapist connecting to a Patient
       if (isCurrentUserTherapist && isTargetUserPatient) {
-        // Save the patient's therapist
+        // Update the patient to assign therapist
         await updateDoc(doc(db, 'users', targetUser.id), {
           assignedTherapistId: user.uid
         });
         
-        // Make a chat room
+        // Create a conversation document if it doesn't exist
         const conversationId = [user.uid, targetUser.id].sort().join('_');
         const conversationRef = doc(db, 'conversations', conversationId);
         const conversationSnap = await getDoc(conversationRef);
@@ -167,17 +166,17 @@ function Contacts() {
         }
         
         alert(`You are now connected to patient: ${targetUser.displayName}`);
-        // Get new contacts
+        // Refresh contacts
         window.location.reload();
       }
-      // Let patient add a therapist
+      // Handle Patient connecting to a Therapist
       else if (!isCurrentUserTherapist && isTargetUserTherapist) {
-        // Save the patient's therapist
+        // Patients can request therapists
         await updateDoc(doc(db, 'users', user.uid), {
           assignedTherapistId: targetUser.id
         });
         
-        // Make a chat room
+        // Create a conversation
         const conversationId = [user.uid, targetUser.id].sort().join('_');
         const conversationRef = doc(db, 'conversations', conversationId);
         const conversationSnap = await getDoc(conversationRef);
@@ -199,10 +198,10 @@ function Contacts() {
         }
         
         alert(`You are now connected to therapist: ${targetUser.displayName}`);
-        // Get new contacts
+        // Refresh contacts
         window.location.reload();
       }
-      // Other connections not allowed yet
+      // Handle other connections (for future enhancement)
       else {
         alert("Connections are currently only supported between therapists and patients.");
       }
@@ -212,12 +211,12 @@ function Contacts() {
     }
   };
 
-  // Start a chat with a contact
+  // Start a conversation with a contact
   const handleStartConversation = (contactId) => {
     navigate(`/messages?user=${contactId}`);
   };
 
-  // Check if you're already connected
+  // Check if user is already connected
   const isUserConnected = (userId) => {
     if (!contacts || contacts.length === 0) return false;
     return contacts.some(contact => contact.id === userId);
@@ -233,7 +232,7 @@ function Contacts() {
         <p>Please log in to view and manage your contacts.</p>
       ) : (
         <>
-          {/* Your info */}
+          {/* Current user info */}
           <Card className="user-info-card">
             <h3>Your Profile</h3>
             <p><strong>Name:</strong> {currentUserData?.displayName || user.displayName || 'N/A'}</p>
@@ -249,64 +248,98 @@ function Contacts() {
             )}
           </Card>
           
-          {/* Search for new contacts */}
+          {/* Contacts list */}
+          <Card className="contacts-list-card">
+            <h3>Your Contacts</h3>
+            {contacts.length === 0 ? (
+              <p>You don't have any contacts yet. Search below to connect with users.</p>
+            ) : (
+              <ul className="contacts-list">
+                {contacts.map(contact => (
+                  <li key={contact.id} className="contact-item">
+                    <div className="contact-info">
+                      <div className="contact-avatar">
+                        {contact.displayName?.charAt(0).toUpperCase() || '?'}
+                      </div>
+                      <div>
+                        <h4>{contact.displayName}</h4>
+                        <p>Role: {contact.role}</p>
+                      </div>
+                    </div>
+                    <Button 
+                      variant="primary" 
+                      size="small"
+                      onClick={() => handleStartConversation(contact.id)}
+                    >
+                      Message
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+          
+          {/* Search for users */}
           <Card className="search-card">
-            <h3>Find People</h3>
-            <div className="search-form">
+            <h3>Find Users</h3>
+            <div className="search-input-container">
               <input
                 type="text"
-                placeholder="Search by name or email"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                placeholder="Search by name or email"
+                className="search-input"
               />
-              <Button onClick={handleSearch} disabled={searching}>
+              <Button 
+                variant="primary"
+                onClick={handleSearch}
+                disabled={searching || !searchTerm.trim()}
+              >
                 {searching ? 'Searching...' : 'Search'}
               </Button>
             </div>
             
+            {/* Search results */}
             {searchResults.length > 0 && (
               <div className="search-results">
-                <h4>Results</h4>
-                {searchResults.map((result) => (
-                  <Card key={result.id} className="search-result-card">
-                    <div className="result-info">
-                      <h4>{result.displayName}</h4>
-                      <p>{result.role}</p>
-                    </div>
-                    {!isUserConnected(result.id) && (
-                      <Button
-                        onClick={() => handleConnect(result)}
-                        disabled={result.role === currentUserData?.role}
-                      >
-                        Connect
-                      </Button>
-                    )}
-                  </Card>
-                ))}
+                <h4>Search Results</h4>
+                <ul className="results-list">
+                  {searchResults.map(result => (
+                    <li key={result.id} className="result-item">
+                      <div className="result-info">
+                        <div className="result-avatar">
+                          {result.displayName?.charAt(0).toUpperCase() || '?'}
+                        </div>
+                        <div>
+                          <h4>{result.displayName}</h4>
+                          <p>Role: {result.role}</p>
+                        </div>
+                      </div>
+                      {isUserConnected(result.id) ? (
+                        <Button 
+                          variant="secondary" 
+                          size="small"
+                          onClick={() => handleStartConversation(result.id)}
+                        >
+                          Message
+                        </Button>
+                      ) : (
+                        <Button 
+                          variant="primary" 
+                          size="small"
+                          onClick={() => handleConnect(result)}
+                        >
+                          Connect
+                        </Button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
-          </Card>
-          
-          {/* Your contacts */}
-          <Card className="contacts-card">
-            <h3>Your Contacts</h3>
-            {contacts.length > 0 ? (
-              <div className="contacts-list">
-                {contacts.map((contact) => (
-                  <Card key={contact.id} className="contact-card">
-                    <div className="contact-info">
-                      <h4>{contact.displayName}</h4>
-                      <p>{contact.role}</p>
-                    </div>
-                    <Button onClick={() => handleStartConversation(contact.id)}>
-                      Message
-                    </Button>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              <p>No contacts yet. Search for people to connect with.</p>
+            
+            {searchTerm && searchResults.length === 0 && !searching && (
+              <p>No users found matching your search.</p>
             )}
           </Card>
         </>
