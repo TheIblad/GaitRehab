@@ -27,15 +27,16 @@ const useStepCounter = (options = {}) => {
   
   // Refs for tracking between renders
   const lastStepTime = useRef(0);
-  const peakDetected = useRef(false); // Track if we're currently in a peak
+  const peakDetected = useRef(false);
   const stepIntervals = useRef([]);
   const stepTimeHistory = useRef([]);
   const startTime = useRef(null);
   const stepLengthMeters = useRef(estimateStepLength(userHeight, userGender));
-  const lastMagnitudes = useRef([]);  // Store recent magnitude values for peak detection
-  const demoStartTime = useRef(null); // For tracking demo mode timing
-  const lastSymmetryUpdate = useRef(0); // Track when symmetry was last updated
-  const symmetryUpdateThreshold = useRef(7000); // Only update symmetry every 5 seconds
+  const lastMagnitudes = useRef([]);
+  const demoStartTime = useRef(null);
+  const lastSymmetryUpdate = useRef(0);
+  const symmetryUpdateThreshold = useRef(7000);
+  const magnitudeHistory = useRef([]);
   
   // Use the accelerometer hook
   const {
@@ -58,12 +59,12 @@ const useStepCounter = (options = {}) => {
     const now = Date.now();
     const { magnitude } = acceleration;
     
+    // Demo mode handling
     if (demoMode && isActive) {
       const elapsedSeconds = demoStartTime.current ? (now - demoStartTime.current) / 1000 : 0;
       const timeSinceLastUpdate = now - lastSymmetryUpdate.current;
       
-      // Only update symmetry every 5 seconds in demo mode
-      if (timeSinceLastUpdate > 5000) {
+      if (timeSinceLastUpdate > symmetryUpdateThreshold.current) {
         lastSymmetryUpdate.current = now;
         
         if (elapsedSeconds <= 10) {
@@ -76,7 +77,13 @@ const useStepCounter = (options = {}) => {
       }
     }
     
-    // Add magnitude to history, keeping last 5 values
+    // Add magnitude to history for better trend detection
+    magnitudeHistory.current.push(magnitude);
+    if (magnitudeHistory.current.length > 10) {
+      magnitudeHistory.current.shift();
+    }
+    
+    // Use a smaller buffer for peak detection
     lastMagnitudes.current.push(magnitude);
     if (lastMagnitudes.current.length > 5) {
       lastMagnitudes.current.shift();
@@ -86,49 +93,54 @@ const useStepCounter = (options = {}) => {
     const timeSinceLastStep = now - lastStepTime.current;
     
     if (timeSinceLastStep > stepCooldown) {
-      // Improved peak detection algorithm
+      // Get the average of last few magnitudes for more stable detection
+      const recentAvg = lastMagnitudes.current.reduce((sum, val) => sum + val, 0) / 
+                        lastMagnitudes.current.length;
+      
+      // Detect peak with improved reliability
       const isPeak = magnitude > stepThreshold && 
                      !peakDetected.current &&
-                     lastMagnitudes.current.length >= 3;
+                     lastMagnitudes.current.length >= 3 &&
+                     // Make sure the magnitude is above recent average
+                     magnitude > recentAvg * 1.2;
       
       if (isPeak) {
-        // Mark that we've detected a peak
+        // Mark peak detected
         peakDetected.current = true;
         
-        // Increment step count
+        // Process step
         setSteps(prevSteps => {
           const newSteps = prevSteps + 1;
           
-          // Update distance based on step length
-          const newDistance = (newSteps * stepLengthMeters.current) / 1000; // Convert to kilometers
+          // Update distance 
+          const newDistance = (newSteps * stepLengthMeters.current) / 1000;
           setDistance(newDistance);
           
-          // Record step interval for cadence calculation
+          // Record step timing data
           if (lastStepTime.current > 0) {
             const interval = timeSinceLastStep;
-            stepIntervals.current.push(interval);
             
-            // Keep last 10 intervals for calculations
+            // Store interval for cadence calculation
+            stepIntervals.current.push(interval);
             if (stepIntervals.current.length > 10) {
               stepIntervals.current.shift();
             }
             
-            // Record step time for symmetry analysis
+            // Store step history for symmetry calculation
             stepTimeHistory.current.push({
               timestamp: now,
               interval: interval
             });
             
-            // Keep last 20 steps for symmetry calculation
             if (stepTimeHistory.current.length > 20) {
               stepTimeHistory.current.shift();
             }
             
             // Calculate cadence (steps per minute)
-            const avgInterval = stepIntervals.current.reduce((a, b) => a + b, 0) / stepIntervals.current.length;
-            if (avgInterval > 0) {
-              setCadence(Math.round(60000 / avgInterval));
-            }
+            const avgInterval = stepIntervals.current.reduce((a, b) => a + b, 0) / 
+                               stepIntervals.current.length;
+            const stepsPerMinute = Math.round(60000 / avgInterval);
+            setCadence(stepsPerMinute);
             
             // Only update symmetry periodically and with enough data
             if (!demoMode && stepTimeHistory.current.length >= 6) {
@@ -140,7 +152,7 @@ const useStepCounter = (options = {}) => {
             }
           }
           
-          // Fire callback if provided
+          // Call step detection callback if provided
           if (onStepDetected) {
             onStepDetected({
               steps: newSteps,
@@ -151,11 +163,11 @@ const useStepCounter = (options = {}) => {
           return newSteps;
         });
         
-        // Update last step time
+        // Update last step timestamp
         lastStepTime.current = now;
       }
-    } else if (magnitude < stepThreshold * 0.6) {
-      // Reset peak detection when magnitude drops significantly below threshold
+    } else if (magnitude < stepThreshold * 0.7) {
+      // Reset peak detection when magnitude drops significantly
       peakDetected.current = false;
     }
   }, [acceleration, isActive, isRunning, onStepDetected, stepCooldown, stepThreshold, demoMode]);
@@ -179,7 +191,7 @@ const useStepCounter = (options = {}) => {
     let calculatedSymmetry = 100 - (cv * 1.5);
     calculatedSymmetry = Math.min(98, Math.max(50, Math.round(calculatedSymmetry)));
 
-    // Use even stronger smoothing for more stable symmetry
+    // Use strong smoothing for stable symmetry
     setSymmetry(prevSymmetry => {
       return Math.round(prevSymmetry * 0.85 + calculatedSymmetry * 0.15);
     });
@@ -189,28 +201,33 @@ const useStepCounter = (options = {}) => {
   const start = useCallback(() => {
     if (!isAvailable) return;
     
+    // Start the accelerometer
     startAccelerometer();
+    
+    // Set active state
     setIsActive(true);
     const now = Date.now();
     setSessionStartTime(now);
     startTime.current = now;
     
-    // Start the demo mode timer
-    if (demoMode) {
-      demoStartTime.current = now;
-      lastSymmetryUpdate.current = now;
-      // Set initial high symmetry (90-98%)
-      const initialSymmetry = Math.floor(Math.random() * 9) + 90;
-      setSymmetry(initialSymmetry);
-    } else {
-      setSymmetry(75); // Default symmetry when not in demo mode
-    }
-
+    // Clear and initialize tracking refs
     lastStepTime.current = 0;
     peakDetected.current = false;
     stepIntervals.current = [];
     stepTimeHistory.current = [];
     lastMagnitudes.current = [];
+    magnitudeHistory.current = [];
+    
+    // Handle demo mode
+    if (demoMode) {
+      demoStartTime.current = now;
+      lastSymmetryUpdate.current = now;
+      // Set initial high symmetry
+      const initialSymmetry = Math.floor(Math.random() * 9) + 90;
+      setSymmetry(initialSymmetry);
+    } else {
+      setSymmetry(75); // Default symmetry
+    }
     
     // Reset counters
     setSteps(0);
@@ -227,10 +244,12 @@ const useStepCounter = (options = {}) => {
   
   // Reset the step counter
   const reset = useCallback(() => {
+    // Reset state values
     setSteps(0);
     setDistance(0);
     setCadence(0);
     
+    // Handle demo mode
     if (demoMode) {
       const initialSymmetry = Math.floor(Math.random() * 9) + 90;
       setSymmetry(initialSymmetry);
@@ -240,12 +259,15 @@ const useStepCounter = (options = {}) => {
       setSymmetry(75);
     }
 
+    // Clear tracking refs
     lastStepTime.current = 0;
     peakDetected.current = false;
     stepIntervals.current = [];
     stepTimeHistory.current = [];
     lastMagnitudes.current = [];
+    magnitudeHistory.current = [];
     
+    // Update timestamps if active
     if (isActive) {
       const now = Date.now();
       startTime.current = now;
@@ -256,7 +278,6 @@ const useStepCounter = (options = {}) => {
     } else {
       startTime.current = null;
       setSessionStartTime(null);
-      demoStartTime.current = null;
     }
   }, [isActive, demoMode]);
   
