@@ -22,7 +22,7 @@ const useStepCounter = (options = {}) => {
   const [cadence, setCadence] = useState(0);
   const [isActive, setIsActive] = useState(false);
   const [sessionStartTime, setSessionStartTime] = useState(null);
-  const [symmetry, setSymmetry] = useState(80); // Set a reasonable default symmetry
+  const [symmetry, setSymmetry] = useState(75); // Initial default symmetry
   
   // Refs for tracking between renders
   const lastStepTime = useRef(0);
@@ -32,9 +32,6 @@ const useStepCounter = (options = {}) => {
   const startTime = useRef(null);
   const stepLengthMeters = useRef(estimateStepLength(userHeight, userGender));
   const lastMagnitudes = useRef([]);  // Store recent magnitude values for peak detection
-  const symmetryUpdateTimer = useRef(null); // Timer for regular symmetry updates
-  const lastSymmetryUpdate = useRef(0); // Track when symmetry was last updated
-  const stabilityFactor = useRef(1.0); // Track overall stability of motion
   
   // Use the accelerometer hook
   const {
@@ -76,146 +73,96 @@ const useStepCounter = (options = {}) => {
         // Mark that we've detected a peak
         peakDetected.current = true;
         
-        // Record step time for calculating intervals
-        const currentStepTime = now;
-        
-        if (lastStepTime.current > 0) {
-          // Calculate interval between steps
-          const interval = currentStepTime - lastStepTime.current;
+        // Increment step count
+        setSteps(prevSteps => {
+          const newSteps = prevSteps + 1;
           
-          // Only consider reasonable intervals (e.g., 250ms to 2000ms)
-          if (interval >= 250 && interval <= 2000) {
+          // Update distance based on step length
+          const newDistance = (newSteps * stepLengthMeters.current) / 1000; // Convert to kilometers
+          setDistance(newDistance);
+          
+          // Record step interval for cadence calculation
+          if (lastStepTime.current > 0) {
+            const interval = timeSinceLastStep;
             stepIntervals.current.push(interval);
-            stepTimeHistory.current.push({ timestamp: currentStepTime, interval });
             
-            // Keep the history to a reasonable size
-            if (stepIntervals.current.length > 20) {
+            // Keep last 10 intervals for calculations
+            if (stepIntervals.current.length > 10) {
               stepIntervals.current.shift();
             }
             
+            // Record step time for symmetry analysis
+            stepTimeHistory.current.push({
+              timestamp: now,
+              interval: interval
+            });
+            
+            // Keep last 20 steps for symmetry calculation
             if (stepTimeHistory.current.length > 20) {
               stepTimeHistory.current.shift();
             }
             
-            // Update symmetry periodically (every 5 steps)
-            if (stepIntervals.current.length % 5 === 0) {
+            // Calculate cadence (steps per minute)
+            const avgInterval = stepIntervals.current.reduce((a, b) => a + b, 0) / stepIntervals.current.length;
+            const stepsPerMinute = Math.round(60000 / avgInterval);
+            setCadence(stepsPerMinute);
+            
+            // Calculate symmetry at regular intervals
+            if (stepTimeHistory.current.length >= 4 && newSteps % 2 === 0) {
               calculateSymmetry();
             }
-            
-            // Calculate cadence
-            if (startTime.current && now - startTime.current > 0) {
-              // Calculate steps per minute
-              const minutesElapsed = (now - startTime.current) / 60000;
-              if (minutesElapsed > 0) {
-                setCadence(Math.round(steps / minutesElapsed));
-              }
-            }
           }
-        }
-        
-        // Update last step time
-        lastStepTime.current = currentStepTime;
-        
-        // Increment steps
-        setSteps(prevSteps => {
-          const newSteps = prevSteps + 1;
-          // Update distance based on step length
-          const newDistance = newSteps * stepLengthMeters.current / 1000;
-          setDistance(newDistance);
+          
+          // Fire callback if provided
+          if (onStepDetected) {
+            onStepDetected({
+              steps: newSteps,
+              timestamp: now
+            });
+          }
+          
           return newSteps;
         });
         
-        // Call the step detected callback if provided
-        if (onStepDetected) {
-          onStepDetected({
-            timestamp: currentStepTime,
-            steps: steps + 1,
-            interval: stepIntervals.current.length > 0 ? 
-              stepIntervals.current[stepIntervals.current.length - 1] : 0
-          });
-        }
-      }
-    } else if (magnitude < stepThreshold * 0.8 && peakDetected.current) {
-      // Reset peak detection when magnitude drops below threshold
-      peakDetected.current = false;
-    }
-    
-    // Update stability factor based on magnitude variability
-    if (lastMagnitudes.current.length >= 5) {
-      const avg = lastMagnitudes.current.reduce((sum, val) => sum + val, 0) / lastMagnitudes.current.length;
-      const variance = lastMagnitudes.current.reduce((sum, val) => sum + Math.pow(val - avg, 2), 0) / lastMagnitudes.current.length;
-      
-      // Higher variance = lower stability
-      const newStabilityFactor = Math.max(0.7, Math.min(1, 1.0 - (variance / 50)));
-      stabilityFactor.current = 0.9 * stabilityFactor.current + 0.1 * newStabilityFactor;
-      
-      // Update symmetry based on stability factor every second
-      if (now - lastSymmetryUpdate.current > 1000) {
-        updateSymmetryBasedOnStability();
-        lastSymmetryUpdate.current = now;
+        // Update last step time
+        lastStepTime.current = now;
+      } else if (magnitude < stepThreshold * 0.6) {
+        // Reset peak detection when magnitude drops significantly below threshold
+        peakDetected.current = false;
       }
     }
-    
-  }, [acceleration, isActive, isRunning, onStepDetected, stepCooldown, stepThreshold, steps]);
+  }, [acceleration, isActive, isRunning, onStepDetected, stepCooldown, stepThreshold]);
   
-  // Updated symmetry calculation with more realistic values
-  const calculateSymmetry = () => {
+  // Calculate gait symmetry from step intervals
+  const calculateSymmetry = useCallback(() => {
     if (stepTimeHistory.current.length < 4) {
-      // Not enough steps for a good calculation, return a reasonable default
-      return updateSymmetryBasedOnStability();
+      return; // Not enough data
     }
-    
-    // Calculate mean interval
+
     const intervals = stepTimeHistory.current.map(step => step.interval);
     const mean = intervals.reduce((a, b) => a + b, 0) / intervals.length;
-    
-    if (mean === 0) {
-      // Avoid division by zero
-      return updateSymmetryBasedOnStability();
-    }
-    
-    // Calculate standard deviation
+
+    if (mean === 0) return; // Avoid division by zero
+
     const squaredDiffs = intervals.map(interval => Math.pow(interval - mean, 2));
     const variance = squaredDiffs.reduce((a, b) => a + b, 0) / intervals.length;
     const stdDev = Math.sqrt(variance);
-    
-    // Calculate coefficient of variation (CV)
     const cv = (stdDev / mean) * 100;
-    
-    // Improved symmetry calculation:
-    // 1. Scale CV to be less harsh (divide by 3 instead of 2)
-    // 2. Set a minimum symmetry threshold of 65%
-    // 3. Adjust by current stability factor
-    const calculatedSymmetry = Math.min(100, Math.max(65, Math.round(100 - cv/3)));
-    const adjustedSymmetry = Math.round(calculatedSymmetry * stabilityFactor.current);
-    
-    console.log("Calculated symmetry:", calculatedSymmetry, "Adjusted:", adjustedSymmetry, 
-                "from", intervals.length, "intervals, CV:", cv.toFixed(1),
-                "Stability:", stabilityFactor.current.toFixed(2));
-    
-    // Update state with a weighted average to avoid jumpy values
+
+    let calculatedSymmetry = 100 - (cv * 1.5);
+    calculatedSymmetry = Math.min(98, Math.max(50, Math.round(calculatedSymmetry)));
+
+    console.log(`CV: ${cv.toFixed(1)}%, Calculated Symmetry: ${calculatedSymmetry}% from ${intervals.length} intervals`);
+
     setSymmetry(prevSymmetry => {
-      // Weighted average: 70% previous value, 30% new measurement
-      return Math.round(0.7 * prevSymmetry + 0.3 * adjustedSymmetry);
+      // If prevSymmetry is the initial default and we have a real calculation,
+      // lean more on the new value for the first few calculations.
+      if (prevSymmetry === 75 && stepTimeHistory.current.length >= 4) {
+          return Math.round(prevSymmetry * 0.4 + calculatedSymmetry * 0.6);
+      }
+      return Math.round(prevSymmetry * 0.7 + calculatedSymmetry * 0.3);
     });
-  };
-  
-  // Helper function to update symmetry based on motion stability
-  const updateSymmetryBasedOnStability = () => {
-    // Base symmetry range from 75-95% depending on stability
-    const baseSymmetry = 75 + Math.round(20 * stabilityFactor.current);
-    
-    // Add a small random element for realism (±2%)
-    const randomFactor = Math.floor(Math.random() * 5) - 2;
-    const newSymmetry = Math.min(98, Math.max(70, baseSymmetry + randomFactor));
-    
-    setSymmetry(prevSymmetry => {
-      // Weighted average for smooth transitions
-      return Math.round(0.8 * prevSymmetry + 0.2 * newSymmetry);
-    });
-    
-    return newSymmetry;
-  };
+  }, []); // Empty dependency array: uses refs and setSymmetry
   
   // Start the step counter
   const start = useCallback(() => {
@@ -230,36 +177,18 @@ const useStepCounter = (options = {}) => {
     stepTimeHistory.current = [];
     lastMagnitudes.current = [];
     peakDetected.current = false;
-    stabilityFactor.current = 1.0;
-    lastSymmetryUpdate.current = 0;
     
     // Reset counters
     setSteps(0);
     setDistance(0);
     setCadence(0);
-    
-    // Set initial symmetry to a reasonable default
-    setSymmetry(85);
-    
-    // Set timer to periodically update symmetry for better realism
-    symmetryUpdateTimer.current = setInterval(() => {
-      if (steps > 0) {
-        updateSymmetryBasedOnStability();
-      }
-    }, 3000); // Update every 3 seconds
-    
+    setSymmetry(75);
   }, [isAvailable, startAccelerometer]);
   
   // Stop the step counter
   const stop = useCallback(() => {
     stopAccelerometer();
     setIsActive(false);
-    
-    // Clear symmetry update timer
-    if (symmetryUpdateTimer.current) {
-      clearInterval(symmetryUpdateTimer.current);
-      symmetryUpdateTimer.current = null;
-    }
   }, [stopAccelerometer]);
   
   // Reset the step counter
@@ -267,14 +196,12 @@ const useStepCounter = (options = {}) => {
     setSteps(0);
     setDistance(0);
     setCadence(0);
-    setSymmetry(85); // Reset to a reasonable default
+    setSymmetry(75);
     lastStepTime.current = 0;
     stepIntervals.current = [];
     stepTimeHistory.current = [];
     lastMagnitudes.current = [];
     peakDetected.current = false;
-    stabilityFactor.current = 1.0;
-    lastSymmetryUpdate.current = 0;
     startTime.current = isActive ? Date.now() : null;
   }, [isActive]);
   
@@ -301,15 +228,6 @@ const useStepCounter = (options = {}) => {
   useEffect(() => {
     stepLengthMeters.current = estimateStepLength(userHeight, userGender);
   }, [userHeight, userGender]);
-  
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (symmetryUpdateTimer.current) {
-        clearInterval(symmetryUpdateTimer.current);
-      }
-    };
-  }, []);
   
   return {
     steps,

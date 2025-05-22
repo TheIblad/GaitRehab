@@ -1,15 +1,17 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { fetchUserActivities } from '../utils/firestoreQueries';
+import { mockActivities } from '../mock/mockActivities';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
-import StepTracker from '../components/patient/StepTracker';
 import ProgressChart from '../components/patient/ProgressChart';
 import CalendarHeatmap from '../components/patient/CalendarHeatmap';
 import RecentActivities from '../components/patient/RecentActivities';
 import ActivityModal from '../components/patient/ActivityModal';
-import AchievementsList from '../components/patient/AchievementsList';
-import { fetchUserActivities } from '../utils/firestoreQueries';
+import StepTracker from '../components/patient/StepTracker';
+import AchievementsList from '../components/achievements/AchievementsList';
+import TaskList from '../components/patient/TaskList'; // Import TaskList
 import './PatientHome.css';
 
 function PatientHome() {
@@ -20,7 +22,6 @@ function PatientHome() {
   const [showMock, setShowMock] = useState(false);
   const [prefilledActivityData, setPrefilledActivityData] = useState(null);
 
-  // Wrap loadActivities in useCallback
   const loadActivities = useCallback(async () => {
     setLoading(true);
     if (user && !showMock) {
@@ -32,82 +33,74 @@ function PatientHome() {
         setActivities([]);
       }
     } else if (showMock) {
-      // Use mock data if showMock is true
-      import('../mock/mockActivities').then(({ mockActivities }) => {
-        setActivities(mockActivities);
-      });
+      setActivities(mockActivities);
     } else {
-      setActivities([]);
+      setActivities([]); // No user and not showing mock
     }
     setLoading(false);
-  }, [user, showMock]); // Dependencies for useCallback
+  }, [user, showMock]);
 
-  // useEffect now has stable dependencies
   useEffect(() => {
     loadActivities();
-  }, [loadActivities]); // loadActivities is now stable
+  }, [loadActivities]);
 
-  // Calculate stats based on activities
   const calculateStats = () => {
-    if (activities.length === 0) {
-      return {
-        steps: "0",
-        symmetry: "0%",
-        distance: "0km",
-        duration: "0min"
-      };
+    if (activities.length === 0 && !showMock) { // Show N/A if no real activities and not in mock mode
+        return { steps: 'N/A', symmetry: 'N/A', distance: 'N/A', duration: 'N/A' };
     }
+    // Use mock/demo stats if showMock is true or if activities are empty (fallback for demo)
+    const sourceActivities = (showMock || activities.length === 0) ? mockActivities : activities;
 
-    // Get today's activities
-    const today = new Date().setHours(0, 0, 0, 0);
-    const todaysActivities = activities.filter(activity => {
-      const activityDate = activity.timestamp?.toDate().setHours(0, 0, 0, 0);
-      return activityDate === today;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const todaysActivities = sourceActivities.filter(act => {
+        const actDate = act.timestamp?.toDate ? act.timestamp.toDate() : new Date(act.date || act.timestamp);
+        actDate.setHours(0,0,0,0);
+        return actDate.getTime() === today.getTime();
     });
 
-    // Calculate stats
     const totalSteps = todaysActivities.reduce((sum, act) => sum + (act.steps || 0), 0);
-    
-    // Get the latest symmetry value
-    const latestSymmetryActivity = [...activities]
-      .filter(act => act.symmetry)
-      .sort((a, b) => b.timestamp?.toDate() - a.timestamp?.toDate())[0];
-    const latestSymmetry = latestSymmetryActivity?.symmetry || 0;
-    
-    // Calculate total distance
-    const totalDistance = todaysActivities.reduce((sum, act) => sum + (parseFloat(act.distance) || 0), 0);
-    
-    // Calculate total duration
     const totalDuration = todaysActivities.reduce((sum, act) => sum + (act.duration || 0), 0);
+    
+    let avgSymmetry = 0;
+    const symmetryActivities = todaysActivities.filter(act => typeof act.symmetry === 'number');
+    if (symmetryActivities.length > 0) {
+        avgSymmetry = symmetryActivities.reduce((sum, act) => sum + act.symmetry, 0) / symmetryActivities.length;
+    }
+    
+    const totalDistance = todaysActivities.reduce((sum, act) => {
+        const dist = parseFloat(act.distance);
+        return sum + (isNaN(dist) ? 0 : dist);
+    }, 0);
 
     return {
       steps: totalSteps.toLocaleString(),
-      symmetry: `${latestSymmetry}%`,
+      symmetry: avgSymmetry > 0 ? `${Math.round(avgSymmetry)}%` : 'N/A',
       distance: `${totalDistance.toFixed(1)}km`,
       duration: `${totalDuration}min`
     };
   };
 
   const handleActivityAdded = () => {
-    loadActivities(); // Refresh activities when a new one is added
+    setModalOpen(false);
+    loadActivities(); // Refresh activities list
+    setPrefilledActivityData(null); // Clear prefilled data
   };
 
-  // Add this function to handle completing a step tracking session
   const handleActivitySessionComplete = (sessionStats) => {
-    // Open the activity modal with pre-filled data
-    setModalOpen(true);
-    
-    // Pre-fill the activity data when the modal opens
+    console.log("Step tracker session completed:", sessionStats);
     setPrefilledActivityData({
-      type: 'Walking',
+      type: 'Walking', // Default type for step tracker
       steps: sessionStats.steps,
-      distance: sessionStats.distance,
+      distance: sessionStats.distance.toFixed(2),
+      duration: Math.round(sessionStats.duration / 60), // Convert seconds to minutes
       symmetry: sessionStats.symmetry,
-      duration: Math.round(sessionStats.duration / 60)
+      timestamp: new Date(sessionStats.startTime)
     });
+    setModalOpen(true); // Open modal to log this activity
   };
 
-  // Using the stats variable by displaying it in the UI
   const currentStats = calculateStats();
 
   return (
@@ -115,9 +108,12 @@ function PatientHome() {
       <div className="page-header">
         <h2>Patient Dashboard</h2>
         <div style={{ display: 'flex', gap: '10px' }}>
-          <Button 
-            variant="primary" 
-            onClick={() => setModalOpen(true)}
+          <Button
+            variant="primary"
+            onClick={() => {
+              setPrefilledActivityData(null); // Ensure no prefilled data for manual log
+              setModalOpen(true);
+            }}
             className="log-activity-btn"
           >
             Log Activity
@@ -130,40 +126,35 @@ function PatientHome() {
           </Button>
         </div>
       </div>
-      
-      {/* Display stats for today */}
+
       <div className="stats-cards">
         <Card className="stat-card">
           <div className="stat-value">{currentStats.steps}</div>
           <div className="stat-label">Today's Steps</div>
         </Card>
-        
         <Card className="stat-card">
           <div className="stat-value">{currentStats.symmetry}</div>
           <div className="stat-label">Gait Symmetry</div>
         </Card>
-        
         <Card className="stat-card">
           <div className="stat-value">{currentStats.distance}</div>
           <div className="stat-label">Distance</div>
         </Card>
-        
         <Card className="stat-card">
           <div className="stat-value">{currentStats.duration}</div>
           <div className="stat-label">Exercise Time</div>
         </Card>
       </div>
-      
-      {/* Always display the step tracker */}
-      <StepTracker 
+
+      <StepTracker
         onSessionComplete={handleActivitySessionComplete}
-        userSettings={{ 
-          height: user?.height || 170,
+        userSettings={{
+          height: user?.height || 170, // Fetch from user profile or use default
           gender: user?.gender || 'neutral',
           stepGoal: user?.stepGoal || 10000
-        }} 
+        }}
       />
-      
+
       <div className="dashboard-content">
         <div className="content-left">
           <Card className="chart-card">
@@ -174,22 +165,12 @@ function PatientHome() {
           </Card>
         </div>
         <div className="content-right">
-          {showMock && (
-            <Card className="activities-card">
-              <RecentActivities activities={activities} loading={loading} />
-            </Card>
-          )}
-          {!showMock && (
-            <Card className="activities-card">
-              {loading ? (
-                <p>Loading activities...</p>
-              ) : activities.length > 0 ? (
-                <RecentActivities activities={activities} />
-              ) : (
-                <p>No activities found. Start logging your progress!</p>
-              )}
-            </Card>
-          )}
+          {/* Render TaskList here */}
+          <TaskList />
+
+          <Card className="activities-card">
+            <RecentActivities activities={activities} loading={loading} />
+          </Card>
           
           <Card className="achievements-card">
             <h3>Recent Achievements</h3>
@@ -201,9 +182,12 @@ function PatientHome() {
         </div>
       </div>
 
-      <ActivityModal 
-        isOpen={modalOpen} 
-        onClose={() => setModalOpen(false)}
+      <ActivityModal
+        isOpen={modalOpen}
+        onClose={() => {
+          setModalOpen(false);
+          setPrefilledActivityData(null); // Clear prefilled data when modal closes
+        }}
         onActivityAdded={handleActivityAdded}
         prefilledData={prefilledActivityData}
       />

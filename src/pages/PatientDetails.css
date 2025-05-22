@@ -436,12 +436,14 @@
 /* Tabs */
 .patient-details-tabs {
   margin-top: 24px;
+  margin-bottom: 20px;
 }
 
 .tabs {
   display: flex;
   border-bottom: 1px solid var(--border-color);
   margin-bottom: 16px;
+  gap: 5px;
 }
 
 .tab {
@@ -488,4 +490,147 @@
 
 .achievements-tab {
   margin-top: 16px;
+}
+
+/* Styles for the tasks tab */
+.therapist-task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  padding: 10px;
+}
+
+.task-item {
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+  background-color: white;
+}
+
+.task-item .task-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  background-color: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.task-item .task-title-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.task-item .task-badge {
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-weight: 500;
+}
+
+.task-badge.completed {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+.task-badge.overdue {
+  background-color: #fee2e2;
+  color: #b91c1c;
+}
+
+.task-badge.active {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.task-item .task-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.task-item .task-meta {
+  font-size: 14px;
+  color: #64748b;
+}
+
+.task-item .task-details {
+  padding: 15px;
+}
+
+.task-item .task-description {
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.task-item .task-type-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.task-item .task-type,
+.task-item .task-reps,
+.task-item .task-duration {
+  font-size: 13px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  background-color: #f1f5f9;
+  color: #475569;
+}
+
+.task-item .task-completion-info {
+  padding: 12px;
+  background-color: #f8fafc;
+  border-radius: 6px;
+  border-left: 4px solid #10b981;
+  margin-top: 10px;
+  font-size: 14px;
+}
+
+.empty-tasks-message {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.empty-tasks-message p {
+  margin-bottom: 20px;
+  color: #64748b;
+}
+
+/* Make sure the tabs are visually distinct */
+.patient-details-tabs {
+  margin-bottom: 20px;
+}
+
+.tabs {
+  display: flex;
+  border-bottom: 1px solid #e2e8f0;
+  gap: 5px;
+}
+
+.tab {
+  padding: 12px 20px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 15px;
+  color: #64748b;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.tab:hover {
+  color: #0f172a;
+  background-color: #f8fafc;
+}
+
+.tab.active {
+  color: #3b82f6;
+  border-bottom: 3px solid #3b82f6;
+  font-weight: 600;
 }
