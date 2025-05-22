@@ -7,14 +7,14 @@ import { estimateStepLength } from '../utils/sensorUtils';
  */
 const useStepCounter = (options = {}) => {
   const {
-    stepThreshold = 10.0,       // Increase threshold to be less sensitive (was 3.0)
-    stepCooldown = 400,        // Increase cooldown to prevent rapid counting (was 250)
-    userHeight = 170,          // User height in cm for step length calculation
-    userGender = 'neutral',    // User gender for step length calculation
-    filterCoefficient = 0.3,   // Reduce coefficient for more smoothing (was 0.5)
-    onStepDetected = null,     // Callback when a step is detected
-    enabled = true,            // Whether the step counter is enabled
-    demoMode = true            // Enable demo mode by default for the video
+    stepThreshold = 10.0,
+    stepCooldown = 400,
+    userHeight = 170,
+    userGender = 'neutral',
+    filterCoefficient = 0.3,
+    onStepDetected = null,
+    enabled = true,
+    demoMode = true
   } = options;
 
   // State
@@ -35,7 +35,7 @@ const useStepCounter = (options = {}) => {
   const lastMagnitudes = useRef([]);  // Store recent magnitude values for peak detection
   const demoStartTime = useRef(null); // For tracking demo mode timing
   const lastSymmetryUpdate = useRef(0); // Track when symmetry was last updated
-  const symmetryUpdateThreshold = useRef(5000); // Only update symmetry every 5 seconds
+  const symmetryUpdateThreshold = useRef(7000); // Only update symmetry every 5 seconds
   
   // Use the accelerometer hook
   const {
@@ -181,7 +181,7 @@ const useStepCounter = (options = {}) => {
 
     // Use even stronger smoothing for more stable symmetry
     setSymmetry(prevSymmetry => {
-      return Math.round(prevSymmetry * 0.8 + calculatedSymmetry * 0.2);
+      return Math.round(prevSymmetry * 0.85 + calculatedSymmetry * 0.15);
     });
   }, []);
   
