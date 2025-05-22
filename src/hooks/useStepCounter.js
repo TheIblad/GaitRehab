@@ -13,7 +13,8 @@ const useStepCounter = (options = {}) => {
     userGender = 'neutral',    // User gender for step length calculation
     filterCoefficient = 0.3,   // Reduce coefficient for more smoothing (was 0.5)
     onStepDetected = null,     // Callback when a step is detected
-    enabled = true             // Whether the step counter is enabled
+    enabled = true,            // Whether the step counter is enabled
+    demoMode = true            // Enable demo mode by default for the video
   } = options;
 
   // State
@@ -32,6 +33,7 @@ const useStepCounter = (options = {}) => {
   const startTime = useRef(null);
   const stepLengthMeters = useRef(estimateStepLength(userHeight, userGender));
   const lastMagnitudes = useRef([]);  // Store recent magnitude values for peak detection
+  const demoStartTime = useRef(null); // For tracking demo mode timing
   
   // Use the accelerometer hook
   const {
@@ -53,6 +55,19 @@ const useStepCounter = (options = {}) => {
     
     const now = Date.now();
     const { magnitude } = acceleration;
+    
+    if (demoMode && isActive) {
+      const elapsedSeconds = demoStartTime.current ? (now - demoStartTime.current) / 1000 : 0;
+      
+
+      if (elapsedSeconds <= 10) {
+        const highSymmetry = Math.floor(Math.random() * 9) + 90;
+        setSymmetry(highSymmetry);
+      } else {
+        const lowerSymmetry = Math.floor(Math.random() * 16) + 60;
+        setSymmetry(lowerSymmetry);
+      }
+    }
     
     // Add magnitude to history, keeping last 5 values
     lastMagnitudes.current.push(magnitude);
@@ -108,7 +123,8 @@ const useStepCounter = (options = {}) => {
             setCadence(stepsPerMinute);
             
             // Calculate symmetry at regular intervals
-            if (stepTimeHistory.current.length >= 4 && newSteps % 2 === 0) {
+            // Only calculate real symmetry if demo mode is off
+            if (!demoMode && stepTimeHistory.current.length >= 4 && newSteps % 2 === 0) {
               calculateSymmetry();
             }
           }
@@ -131,7 +147,7 @@ const useStepCounter = (options = {}) => {
         peakDetected.current = false;
       }
     }
-  }, [acceleration, isActive, isRunning, onStepDetected, stepCooldown, stepThreshold]);
+  }, [acceleration, isActive, isRunning, onStepDetected, stepCooldown, stepThreshold, demoMode]);
   
   // Calculate gait symmetry from step intervals
   const calculateSymmetry = useCallback(() => {
@@ -170,25 +186,37 @@ const useStepCounter = (options = {}) => {
     
     startAccelerometer();
     setIsActive(true);
-    setSessionStartTime(Date.now());
-    startTime.current = Date.now();
+    const now = Date.now();
+    setSessionStartTime(now);
+    startTime.current = now;
+    
+    // Start the demo mode timer
+    if (demoMode) {
+      demoStartTime.current = now;
+      // Set initial high symmetry (90-98%)
+      const initialSymmetry = Math.floor(Math.random() * 9) + 90;
+      setSymmetry(initialSymmetry);
+    } else {
+      setSymmetry(75); // Default symmetry when not in demo mode
+    }
+
     lastStepTime.current = 0;
+    peakDetected.current = false;
     stepIntervals.current = [];
     stepTimeHistory.current = [];
     lastMagnitudes.current = [];
-    peakDetected.current = false;
     
     // Reset counters
     setSteps(0);
     setDistance(0);
     setCadence(0);
-    setSymmetry(75);
-  }, [isAvailable, startAccelerometer]);
+  }, [isAvailable, startAccelerometer, demoMode]);
   
   // Stop the step counter
   const stop = useCallback(() => {
     stopAccelerometer();
     setIsActive(false);
+    demoStartTime.current = null;
   }, [stopAccelerometer]);
   
   // Reset the step counter
@@ -196,14 +224,36 @@ const useStepCounter = (options = {}) => {
     setSteps(0);
     setDistance(0);
     setCadence(0);
-    setSymmetry(75);
+    
+    if (demoMode) {
+      // Reset to high symmetry for demo mode
+      const initialSymmetry = Math.floor(Math.random() * 9) + 90;
+      setSymmetry(initialSymmetry);
+      demoStartTime.current = Date.now();
+    } else {
+      setSymmetry(75);
+    }
+
     lastStepTime.current = 0;
+    peakDetected.current = false;
     stepIntervals.current = [];
     stepTimeHistory.current = [];
     lastMagnitudes.current = [];
-    peakDetected.current = false;
     startTime.current = isActive ? Date.now() : null;
-  }, [isActive]);
+    
+    if (isActive) {
+      const now = Date.now();
+      startTime.current = now;
+      setSessionStartTime(now);
+      if (demoMode) {
+        demoStartTime.current = now;
+      }
+    } else {
+      startTime.current = null;
+      setSessionStartTime(null);
+      demoStartTime.current = null;
+    }
+  }, [isActive, demoMode]);
   
   // Calculate session duration in seconds
   const getSessionDuration = useCallback(() => {
