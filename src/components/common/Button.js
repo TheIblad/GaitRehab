@@ -29,7 +29,7 @@ export default function Button({
     large: 'py-3 px-6 text-lg'
   };
 
-  // Special case for icon buttons to maintain square aspect ratio
+  // Square padding for icon buttons
   const iconSizeClasses = {
     small: 'p-1',
     medium: 'p-2',
@@ -38,7 +38,6 @@ export default function Button({
   
   const disabledClasses = disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer';
   
-  // Use icon size classes if variant is 'icon'
   const sizeClass = variant === 'icon' ? iconSizeClasses[size] : sizeClasses[size];
   
   const classes = `${baseClasses} ${variantClasses[variant]} ${sizeClass} ${disabledClasses} ${className}`;

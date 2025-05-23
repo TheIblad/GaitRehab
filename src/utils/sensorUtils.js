@@ -123,19 +123,91 @@ export const isInMotion = (magnitude, threshold = 10.5) => {
  * @returns {number} Estimated step length in meters
  */
 export const estimateStepLength = (heightCm, gender = 'neutral') => {
-  if (!heightCm || heightCm <= 0) {
-    // Default average step length if no height provided
-    return 0.65; // Reduced from 0.762 to be more conservative
-  }
+  const heightM = heightCm / 100;
   
-  // Different formulas based on gender - using more conservative multipliers
-  if (gender.toLowerCase() === 'male') {
-    return heightCm * 0.38 / 100; // Reduced from 0.415
-  } else if (gender.toLowerCase() === 'female') {
-    return heightCm * 0.37 / 100; // Reduced from 0.413
-  } else {
-    return heightCm * 0.375 / 100; // Reduced from 0.414
-  }
+  // Different multipliers based on research
+  const multipliers = {
+    male: 0.415,
+    female: 0.413,
+    neutral: 0.414
+  };
+  
+  const multiplier = multipliers[gender] || multipliers.neutral;
+  return heightM * multiplier; // Returns step length in meters
+};
+
+/**
+ * Calculate walking speed from step data
+ */
+export const calculateWalkingSpeed = (stepCount, stepLength, durationSeconds) => {
+  if (durationSeconds === 0) return 0;
+  const distanceMeters = stepCount * stepLength;
+  return distanceMeters / durationSeconds; // m/s
+};
+
+/**
+ * Calculate cadence (steps per minute)
+ */
+export const calculateCadence = (stepIntervals) => {
+  if (stepIntervals.length === 0) return 0;
+  
+  const avgInterval = stepIntervals.reduce((sum, interval) => sum + interval, 0) / stepIntervals.length;
+  return Math.round(60000 / avgInterval); // steps per minute
+};
+
+/**
+ * Calculate gait symmetry from step timing data
+ */
+export const calculateGaitSymmetry = (stepTimings) => {
+  if (stepTimings.length < 4) return null;
+  
+  // Calculate coefficient of variation for step intervals
+  const intervals = stepTimings.map(step => step.interval);
+  const mean = intervals.reduce((sum, val) => sum + val, 0) / intervals.length;
+  
+  if (mean === 0) return null;
+  
+  const variance = intervals.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / intervals.length;
+  const stdDev = Math.sqrt(variance);
+  const coefficientOfVariation = (stdDev / mean) * 100;
+  
+  // Convert CV to symmetry percentage (lower CV = higher symmetry)
+  // Normal walking typically has CV of 2-8%, impaired gait can be 15%+
+  const symmetry = Math.max(50, Math.min(98, 100 - (coefficientOfVariation * 6)));
+  
+  return Math.round(symmetry);
+};
+
+/**
+ * Apply low-pass filter to sensor data
+ */
+export const lowPassFilter = (newValue, previousValue, alpha = 0.3) => {
+  return alpha * newValue + (1 - alpha) * previousValue;
+};
+
+/**
+ * Calculate magnitude from 3D acceleration
+ */
+export const calculateMagnitude = (x, y, z) => {
+  return Math.sqrt(x * x + y * y + z * z);
+};
+
+/**
+ * Detect step peak in acceleration data
+ */
+export const detectStepPeak = (magnitude, threshold, previousMagnitudes = [], peakDetected = false) => {
+  if (previousMagnitudes.length < 3) return false;
+  
+  // Check if current magnitude exceeds threshold
+  if (magnitude < threshold) return false;
+  
+  // Check if we're already in a peak
+  if (peakDetected) return false;
+  
+  // Check if this is a local maximum
+  const recentAvg = previousMagnitudes.slice(-3).reduce((sum, val) => sum + val, 0) / 3;
+  
+  return magnitude > recentAvg * 1.2;
 };
 
 /**

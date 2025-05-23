@@ -19,10 +19,9 @@ const ActivityModal = ({ isOpen, onClose, onActivityAdded, prefilledData }) => {
   const [newAchievement, setNewAchievement] = useState(null);
   const [showAchievementModal, setShowAchievementModal] = useState(false);
 
-  // Reset form when modal is opened/closed
+  // Reset form when modal opens/closes
   useEffect(() => {
     if (isOpen) {
-      // If we have prefilled data, use it
       if (prefilledData) {
         setActivityType(prefilledData.type || 'Walking');
         setDuration(prefilledData.duration?.toString() || '');
@@ -31,7 +30,6 @@ const ActivityModal = ({ isOpen, onClose, onActivityAdded, prefilledData }) => {
         setSymmetry(prefilledData.symmetry?.toString() || '');
         setNotes(prefilledData.notes || '');
       } else {
-        // Otherwise reset to defaults
         setActivityType('Walking');
         setDuration('');
         setSteps('');
@@ -55,7 +53,6 @@ const ActivityModal = ({ isOpen, onClose, onActivityAdded, prefilledData }) => {
     setError('');
     
     try {
-      // Prepare activity data
       const activityData = {
         uid: user.uid,
         timestamp: serverTimestamp(),
@@ -67,25 +64,20 @@ const ActivityModal = ({ isOpen, onClose, onActivityAdded, prefilledData }) => {
         notes
       };
       
-      // Add to Firestore
       const docRef = await addDoc(collection(db, 'activities'), activityData);
       console.log('Activity added with ID:', docRef.id);
       
-      // Check for achievements
       const achievements = await checkActivityAchievements(user.uid, activityData);
       
-      // If new achievements were earned, show the modal
       if (achievements && achievements.length > 0) {
         setNewAchievement(achievements[0]);
         setShowAchievementModal(true);
       }
       
-      // Call the callback if provided
       if (onActivityAdded) {
         onActivityAdded();
       }
       
-      // Close the modal if no achievements to show
       if (!achievements || achievements.length === 0) {
         onClose();
       }
@@ -97,7 +89,6 @@ const ActivityModal = ({ isOpen, onClose, onActivityAdded, prefilledData }) => {
     }
   };
 
-  // Close the achievement modal and then the activity modal
   const handleAchievementModalClose = () => {
     setShowAchievementModal(false);
     onClose();
@@ -218,7 +209,6 @@ const ActivityModal = ({ isOpen, onClose, onActivityAdded, prefilledData }) => {
         </div>
       </div>
       
-      {/* Achievement Modal */}
       <AchievementModal
         isOpen={showAchievementModal}
         onClose={handleAchievementModalClose}

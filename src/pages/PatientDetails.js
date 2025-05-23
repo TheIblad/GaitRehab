@@ -12,6 +12,7 @@ import ProgressChart from '../components/patient/ProgressChart';
 import CalendarHeatmap from '../components/patient/CalendarHeatmap';
 import RecentActivities from '../components/patient/RecentActivities';
 import TaskAssignModal from '../components/therapist/TaskAssignModal';
+import AchievementsList from '../components/achievements/AchievementsList';
 import './PatientDetails.css';
 
 function PatientDetails() {
@@ -167,6 +168,7 @@ function PatientDetails() {
           <button className={`tab ${activeTab === 'activities' ? 'active' : ''}`} onClick={() => setActiveTab('activities')}>Activities</button>
           <button className={`tab ${activeTab === 'charts' ? 'active' : ''}`} onClick={() => setActiveTab('charts')}>Progress Charts</button>
           <button className={`tab ${activeTab === 'tasks' ? 'active' : ''}`} onClick={() => setActiveTab('tasks')}>Assigned Tasks</button>
+          <button className={`tab ${activeTab === 'achievements' ? 'active' : ''}`} onClick={() => setActiveTab('achievements')}>Achievements</button>
         </div>
       </div>
 
@@ -295,6 +297,12 @@ function PatientDetails() {
               </Button>
             </div>
           )}
+        </Card>
+      )}
+
+      {activeTab === 'achievements' && (
+        <Card title="Patient Achievements" className="full-width-card">
+          <AchievementsList userId={patientId} />
         </Card>
       )}
 

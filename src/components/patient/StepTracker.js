@@ -1,29 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
 import useStepCounter from '../../hooks/useStepCounter';
-import useAccelerometer from '../../hooks/useAccelerometer';
 import Card from '../common/Card';
 import Button from '../common/Button';
 import './StepTracker.css';
 
 const StepTracker = ({ onSessionComplete, userSettings = {} }) => {
-  // Get user settings with defaults
   const {
     height = 170,
     gender = 'neutral',
     stepGoal = 10000
   } = userSettings;
   
-  // State for the tracker
   const [isTracking, setIsTracking] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
-  const [showPermissionPrompt, setShowPermissionPrompt] = useState(false);
-  const [permissionDenied, setPermissionDenied] = useState(false);
-  const [isMobileDevice, setIsMobileDevice] = useState(false);
-  
-  // Timer ref
+  const [showDebug, setShowDebug] = useState(false);
   const timerRef = useRef(null);
   
-  // Use our step counter hook
   const {
     steps,
     distance,
@@ -34,6 +26,7 @@ const StepTracker = ({ onSessionComplete, userSettings = {} }) => {
     isRunning,
     error,
     usingFallback,
+    acceleration,
     start,
     stop,
     reset,
@@ -41,104 +34,61 @@ const StepTracker = ({ onSessionComplete, userSettings = {} }) => {
   } = useStepCounter({
     userHeight: height,
     userGender: gender,
-    enabled: true
-  });
-  
-  // Get acceleration data from useAccelerometer directly
-  const { acceleration } = useAccelerometer({
-    filterCoefficient: 0.3,
-    enabled: true
-  });
-  
-  // Check if user is on a mobile device
-  useEffect(() => {
-    const checkMobileDevice = () => {
-      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      setIsMobileDevice(isMobile);
-      console.log("Is mobile device:", isMobile);
-    };
-    
-    checkMobileDevice();
-  }, []);
-  
-  // Check for sensor permission on mount
-  useEffect(() => {
-    if ('permissions' in navigator) {
-      navigator.permissions.query({ name: 'accelerometer' })
-        .then(result => {
-          if (result.state === 'prompt') {
-            setShowPermissionPrompt(true);
-          } else if (result.state === 'denied') {
-            setPermissionDenied(true);
-          }
-        })
-        .catch(err => {
-          console.warn('Could not check permissions:', err);
-        });
+    enabled: true,
+    stepThreshold: 12.0,
+    stepCooldown: 300,
+    onStepDetected: (data) => {
+      console.log('Step detected:', data);
     }
-  }, []);
+  });
   
-  // Start tracking function
-  const handleStartTracking = () => {
-    console.log("=== STARTING STEP TRACKING ===");
-    console.log("Sensor available:", isAvailable);
-    console.log("Using fallback:", usingFallback);
-    
-    setIsTracking(true);
-    setElapsedTime(0);
-    start();
-    
-    // Start the timer
-    timerRef.current = setInterval(() => {
-      setElapsedTime(prev => prev + 1);
-    }, 1000);
-    
-    // Log sensor status after a short delay
-    setTimeout(() => {
-      console.log("Tracking status after 1 second:");
-      console.log("Active:", isActive);
-      console.log("Running:", isRunning);
-      console.log("Acceleration:", acceleration);
-      console.log("==========================");
-    }, 1000);
+  const handleStartTracking = async () => {
+    const started = await start();
+    if (started) {
+      setIsTracking(true);
+      setElapsedTime(0);
+      
+      timerRef.current = setInterval(() => {
+        setElapsedTime(prevTime => prevTime + 1);
+      }, 1000);
+    } else {
+      alert('Failed to start tracking. Please check sensor permissions.');
+    }
   };
   
-  // Stop tracking function
   const handleStopTracking = () => {
     setIsTracking(false);
     stop();
     
-    // Stop the timer
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
     
-    // Get final stats and send to parent component
     const sessionStats = getSessionStats();
     if (onSessionComplete) {
-      onSessionComplete({
-        ...sessionStats,
-        endTime: Date.now(),
-        duration: elapsedTime
-      });
+      onSessionComplete(sessionStats);
     }
   };
   
-  // Reset tracking function
   const handleResetTracking = () => {
-    reset();
     setElapsedTime(0);
+    reset();
+    
+    if (isTracking && timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = setInterval(() => {
+        setElapsedTime(prevTime => prevTime + 1);
+      }, 1000);
+    }
   };
   
-  // Format time from seconds to MM:SS
   const formatTime = (timeInSeconds) => {
     const minutes = Math.floor(timeInSeconds / 60);
     const seconds = timeInSeconds % 60;
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
   
-  // Clean up timer on unmount
   useEffect(() => {
     return () => {
       if (timerRef.current) {
@@ -147,87 +97,69 @@ const StepTracker = ({ onSessionComplete, userSettings = {} }) => {
     };
   }, []);
   
-  // Calculate progress towards goal
   const progressPercentage = Math.min(100, (steps / stepGoal) * 100);
   
-  // If not on a mobile device, show a different card
-  if (!isMobileDevice) {
+  if (!isAvailable) {
     return (
-      <Card className="step-tracker-card desktop-warning">
-        <h3>Step Tracker</h3>
-        <div className="tracker-error">
-          <i className="fas fa-desktop"></i>
-          <p>
-            Step tracking requires motion sensors that are only available on mobile devices.
-            Please open this app on your smartphone or tablet to use the step tracking feature.
-          </p>
-          <div className="qr-code-container">
-            <p className="qr-instructions">Scan this QR code with your mobile device:</p>
-            <div className="qr-placeholder">QR Code would appear here in production</div>
-          </div>
-        </div>
-      </Card>
-    );
-  }
-  
-  // If sensors are not available
-  if (error || !isAvailable) {
-    return (
-      <Card className="step-tracker-card error-state">
-        <h3>Step Tracker</h3>
+      <Card className="step-tracker-card">
         <div className="tracker-error">
           <i className="fas fa-exclamation-triangle"></i>
+          <h3>Motion Sensors Not Available</h3>
           <p>
-            {permissionDenied 
-              ? 'Permission to access motion sensors was denied. Please enable sensor access in your browser settings.' 
-              : error || 'Motion sensors are not available on this device or browser.'}
-          </p>
-          <p className="fallback-message">
-            You can still log activities manually using the "Log Activity" button.
+            Your device doesn't support motion sensors or they're not accessible.
+            Please try on a mobile device with motion sensor support.
           </p>
         </div>
       </Card>
     );
   }
   
-  // If we need permission
-  if (showPermissionPrompt) {
+  if (error) {
     return (
-      <Card className="step-tracker-card permission-state">
-        <h3>Step Tracker</h3>
-        <div className="permission-prompt">
-          <p>This feature needs access to your device's motion sensors to count steps.</p>
-          <Button 
-            variant="primary" 
-            onClick={() => {
-              setShowPermissionPrompt(false);
-              start(); // This will trigger the browser permission prompt
-              stop(); // Immediately stop after permission is granted
-            }}
-          >
-            Allow Access
-          </Button>
-          <Button 
-            variant="secondary" 
-            onClick={() => setShowPermissionPrompt(false)}
-          >
-            Maybe Later
+      <Card className="step-tracker-card">
+        <div className="tracker-error">
+          <i className="fas fa-exclamation-triangle"></i>
+          <h3>Sensor Error</h3>
+          <p>{error}</p>
+          {usingFallback && (
+            <p className="fallback-message">
+              Using fallback motion detection. Results may be less accurate.
+            </p>
+          )}
+          <Button onClick={handleStartTracking} variant="primary">
+            Try Again
           </Button>
         </div>
       </Card>
     );
   }
-  
+
   return (
     <Card className="step-tracker-card">
-      <h3>Step Tracker</h3>
+      <div className="tracker-header">
+        <h3>Step Tracker</h3>
+        <button 
+          className="debug-toggle"
+          onClick={() => setShowDebug(!showDebug)}
+          style={{ 
+            background: 'none', 
+            border: '1px solid #ccc', 
+            borderRadius: '4px',
+            padding: '4px 8px',
+            fontSize: '12px'
+          }}
+        >
+          {showDebug ? 'Hide Debug' : 'Show Debug'}
+        </button>
+      </div>
       
-      <div className="tracker-controls" style={{ marginBottom: '16px' }}>
+      <div className="tracker-controls">
         {!isTracking ? (
           <Button 
             variant="primary" 
             className="tracker-start-btn"
             onClick={handleStartTracking}
+            disabled={!isAvailable}
           >
             Start Tracking
           </Button>
@@ -251,48 +183,25 @@ const StepTracker = ({ onSessionComplete, userSettings = {} }) => {
         )}
       </div>
       
-      <div style={{ 
-        backgroundColor: '#f0f0f0',
-        padding: '8px',
-        margin: '8px 0',
-        borderRadius: '4px',
-        fontSize: '14px',
-        border: '1px solid #ddd'
-      }}>
-        <div style={{ marginBottom: '4px' }}>
-          <strong>Sensor Status:</strong> {isAvailable ? '✅ Available' : '❌ Not Available'}
-          {usingFallback && ' (Using Fallback)'}
-        </div>
-        <div style={{ marginBottom: '4px' }}>
-          <strong>Device Type:</strong> {isMobileDevice ? '📱 Mobile' : '💻 Desktop'}
-        </div>
-        <div style={{ marginBottom: '4px' }}>
-          <strong>State:</strong> {isActive ? 'Active' : 'Inactive'} / {isTracking ? 'Tracking' : 'Not Tracking'}
-        </div>
-        <div style={{ marginBottom: '4px' }}>
-          <strong>Steps:</strong> {steps}
-        </div>
-        <div style={{ marginBottom: '4px' }}>
-          <strong>Acceleration:</strong>
-          <div style={{ marginLeft: '8px' }}>
-            X: {acceleration?.x?.toFixed(2) ?? '0.00'} m/s²
+      {showDebug && (
+        <div className="tracker-debug">
+          <div className="debug-item">
+            <strong>Status:</strong> {isActive ? 'Active' : 'Inactive'} / {isRunning ? 'Running' : 'Stopped'}
           </div>
-          <div style={{ marginLeft: '8px' }}>
-            Y: {acceleration?.y?.toFixed(2) ?? '0.00'} m/s²
+          <div className="debug-item">
+            <strong>Sensor:</strong> {usingFallback ? 'DeviceMotion' : 'Accelerometer'}
           </div>
-          <div style={{ marginLeft: '8px' }}>
-            Z: {acceleration?.z?.toFixed(2) ?? '0.00'} m/s²
+          <div className="debug-item">
+            <strong>Acceleration:</strong> 
+            X: {acceleration.x.toFixed(2)}, 
+            Y: {acceleration.y.toFixed(2)}, 
+            Z: {acceleration.z.toFixed(2)}
           </div>
-          <div style={{ marginLeft: '8px' }}>
-            Magnitude: {acceleration?.magnitude?.toFixed(2) ?? '0.00'} m/s²
+          <div className="debug-item">
+            <strong>Magnitude:</strong> {acceleration.magnitude.toFixed(2)}
           </div>
         </div>
-        {error && (
-          <div style={{ color: 'red', marginTop: '4px' }}>
-            <strong>Error:</strong> {error}
-          </div>
-        )}
-      </div>
+      )}
       
       <div className="tracker-metrics">
         <div className="tracker-metric-item">
@@ -311,8 +220,10 @@ const StepTracker = ({ onSessionComplete, userSettings = {} }) => {
         </div>
         
         <div className="tracker-metric-item">
-          <div className="metric-value">{symmetry || 0}%</div>
-          <div className="metric-label">Symmetry</div>
+          <div className="metric-value">
+            {symmetry !== null ? `${symmetry}%` : '--'}
+          </div>
+          <div className="metric-label">Gait Symmetry</div>
         </div>
       </div>
       
@@ -336,7 +247,7 @@ const StepTracker = ({ onSessionComplete, userSettings = {} }) => {
       
       {usingFallback && (
         <div className="fallback-notice">
-          Using device motion sensors (limited accuracy)
+          Using device motion sensors (may be less accurate)
         </div>
       )}
     </Card>

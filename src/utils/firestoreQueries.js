@@ -11,7 +11,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebase/config";
 
-// Update fetchUserData to include more debugging and handle name fields better
+// Get user data with fallback display name
 export async function fetchUserData(userId) {
   try {
     const userDoc = doc(db, "users", userId);
@@ -20,11 +20,9 @@ export async function fetchUserData(userId) {
     if (userSnapshot.exists()) {
       const data = userSnapshot.data();
       
-      // Make sure we have a displayName - check various possible fields
       const userData = { 
         id: userSnapshot.id, 
         ...data,
-        // Ensure displayName exists by checking various possible name fields
         displayName: data.displayName || data.fullName || data.name || data.username || `User ${userId.substr(0, 4)}`
       };
       
@@ -40,7 +38,7 @@ export async function fetchUserData(userId) {
   }
 }
 
-// Get user activities by userId
+// Get user's activities
 export async function fetchUserActivities(userId) {
   try {
     const activitiesQuery = query(
@@ -61,7 +59,7 @@ export async function fetchUserActivities(userId) {
   }
 }
 
-// Get user achievements by userId
+// Get user's achievements
 export async function fetchUserAchievements(userId) {
   try {
     const achievementsQuery = query(
@@ -82,7 +80,7 @@ export async function fetchUserAchievements(userId) {
   }
 }
 
-// For therapists: Get all patients assigned to a therapist
+// Get all patients assigned to a therapist
 export async function fetchTherapistPatients(therapistId) {
   try {
     const patientsQuery = query(
@@ -104,7 +102,7 @@ export async function fetchTherapistPatients(therapistId) {
   }
 }
 
-// Fetch messages between two users
+// Get messages between two users
 export async function fetchMessages(userId, partnerId) {
   try {
     const conversationId = [userId, partnerId].sort().join('_');
@@ -130,10 +128,9 @@ export async function fetchMessages(userId, partnerId) {
   }
 }
 
-// Add this new function:
+// Add a new activity
 export async function addActivity(activityData) {
   try {
-    // Add timestamp if not provided
     if (!activityData.timestamp) {
       activityData.timestamp = serverTimestamp();
     }
@@ -147,10 +144,9 @@ export async function addActivity(activityData) {
   }
 }
 
-// Add achievement for a user
+// Add a new achievement
 export async function addAchievement(userId, achievementData) {
   try {
-    // Ensure we have the required fields
     const achievement = {
       uid: userId,
       earnedAt: serverTimestamp(),
@@ -166,7 +162,7 @@ export async function addAchievement(userId, achievementData) {
   }
 }
 
-// Check if user already has a specific achievement by badge name
+// Check if user has a specific achievement
 export async function hasAchievement(userId, badgeName) {
   try {
     const achievementsQuery = query(

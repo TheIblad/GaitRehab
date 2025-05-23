@@ -9,7 +9,7 @@ const ProgressBar = ({
   className = '',
   ...props 
 }) => {
-  // Ensure value is between 0 and max
+  // Keep value within valid range
   const normalizedValue = Math.min(Math.max(0, value), max);
   const percentage = (normalizedValue / max) * 100;
   
@@ -27,7 +27,7 @@ const ProgressBar = ({
     gray: 'bg-gray-600'
   };
   
-  // Determine color based on percentage if color is 'auto'
+  // Pick color based on progress if auto
   let barColor = colorClasses[color];
   if (color === 'auto') {
     if (percentage >= 75) barColor = colorClasses.green;

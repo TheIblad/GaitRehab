@@ -33,7 +33,7 @@ function PatientList({ patients = [], onPatientAdded }) {
     navigate(`/patient-details?id=${patientId}`);
   };
 
-  // Helper function to get initials from name
+  // Get initials from patient's name
   const getInitials = (name) => {
     if (!name) return '?';
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
@@ -114,7 +114,6 @@ function PatientList({ patients = [], onPatientAdded }) {
         )}
       </div>
       
-      {/* Modal for adding new patients */}
       <AddPatientModal 
         isOpen={isModalOpen} 
         onClose={handleCloseModal} 

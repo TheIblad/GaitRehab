@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, Navigate, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { auth, db } from './firebase/config';
 import { doc, getDoc } from 'firebase/firestore';
@@ -34,13 +34,11 @@ function DashboardRedirect() {
     console.log("Auth loading:", authLoading);
     console.log("User:", user?.uid);
 
-    // Prevent multiple redirect attempts in a single component mount
     if (redirectAttempted) {
       console.log("Already attempted redirect, skipping");
       return;
     }
 
-    // Wait for auth loading to finish
     if (authLoading) {
       console.log("Auth still loading, waiting...");
       return;
@@ -62,7 +60,7 @@ function DashboardRedirect() {
           const userData = userSnapshot.data();
           console.log("Dashboard redirect - user role:", userData.role);
           
-          setRedirectAttempted(true); // Prevent additional redirects
+          setRedirectAttempted(true);
           
           if (userData.role === 'therapist') {
             console.log("Redirecting to therapist dashboard");
@@ -85,7 +83,6 @@ function DashboardRedirect() {
       }
     };
 
-    // Only run this once
     if (!redirectAttempted) {
       checkUserRole();
     }
@@ -98,13 +95,12 @@ function DashboardRedirect() {
 // --- Role-Based Route Component ---
 // This component now correctly runs within the Router context
 function RoleBasedRoute({ element, requiredRole }) {
-  const { user, loading: authLoading } = useAuth(); // Use auth loading state
+  const { user, loading: authLoading } = useAuth();
   const [roleData, setRoleData] = useState(null);
   const [roleLoading, setRoleLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Wait for auth loading
     if (authLoading) {
       return;
     }
@@ -122,14 +118,12 @@ function RoleBasedRoute({ element, requiredRole }) {
         if (userSnapshot.exists()) {
           const data = userSnapshot.data();
           console.log(`RoleBasedRoute (${requiredRole}) - user role:`, data.role);
-          setRoleData(data); // Store role data
+          setRoleData(data);
 
           if (data.role !== requiredRole) {
-            // Redirect to their actual dashboard if role doesn't match
             navigate(data.role === 'therapist' ? "/therapist" : "/patient", { replace: true });
             return;
           }
-          // Role matches, proceed
         } else {
           console.error("User document doesn't exist! Logging out.");
           await auth.signOut();
@@ -137,7 +131,7 @@ function RoleBasedRoute({ element, requiredRole }) {
         }
       } catch (error) {
         console.error("Error in role validation:", error);
-        navigate("/login", { replace: true }); // Redirect on error
+        navigate("/login", { replace: true });
       } finally {
         setRoleLoading(false);
       }
@@ -150,51 +144,62 @@ function RoleBasedRoute({ element, requiredRole }) {
     return <div>Verifying access...</div>;
   }
 
-  // Render the element only if auth is done, role check is done, and role matches
   if (roleData && roleData.role === requiredRole) {
     return element;
   }
 
-  // Return null or a loading indicator if redirection is happening
   return null;
 }
 
 // --- Main App Content Component ---
 // This component now correctly runs within the Router context
 function AppContent() {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const { user, loading: authLoading } = useAuth(); // Use auth loading state
-  const [userData, setUserData] = useState(null);
-  const navigate = useNavigate(); // useNavigate is now valid here
+  const { user, loading } = useAuth();
+  const [role, setRole] = useState(null);
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  // Fetch user data only when auth is confirmed and user exists
   useEffect(() => {
-    if (!authLoading && user) {
+    const checkUserRole = async () => {
+      if (user) {
+        try {
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          if (userDoc.exists()) {
+            setRole(userDoc.data().role);
+          }
+        } catch (error) {
+          console.error('Error checking user role:', error);
+        }
+      }
+    };
+    checkUserRole();
+  }, [user]);
+
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [userData, setUserData] = useState(null);
+
+  useEffect(() => {
+    if (!loading && user) {
       fetchUserData(user.uid).then(data => setUserData(data));
-    } else if (!authLoading && !user) {
-      setUserData(null); // Clear user data on logout
+    } else if (!loading && !user) {
+      setUserData(null);
     }
-    // Dependency: authLoading and user
-  }, [user, authLoading]);
+  }, [user, loading]);
 
   const toggleMenu = () => setMenuOpen(!menuOpen);
-
-  const dashboardLink = userData?.role === 'therapist' ? '/therapist' : '/patient';
 
   const handleSignOut = async () => {
     try {
       await auth.signOut();
-      // Navigate should work reliably now
       navigate('/');
     } catch (error) {
       console.error('Error signing out:', error);
-      // Fallback if navigate fails for some reason
       window.location.href = '/';
     }
   };
 
   // Don't render the main layout until auth state is resolved
-  if (authLoading) {
+  if (loading) {
      return <div>Loading Application...</div>; // Or a proper spinner component
   }
 
@@ -218,11 +223,11 @@ function AppContent() {
               <>
                 <li>
                   {/* Link directly to the user's dashboard */}
-                  <Link to={userData?.role === 'therapist' ? '/therapist' : '/patient'} onClick={() => setMenuOpen(false)}>
+                  <Link to={role === 'therapist' ? '/therapist' : '/patient'} onClick={() => setMenuOpen(false)}>
                     Dashboard
                   </Link>
                 </li>
-                 {userData?.role === 'therapist' && (
+                 {role === 'therapist' && (
                    <li>
                      <Link to="/progress" onClick={() => setMenuOpen(false)}>
                        Progress
@@ -284,7 +289,7 @@ function AppContent() {
           <Route 
             path="/dashboard" 
             element={
-              authLoading ? (
+              loading ? (
                 <div>Loading authentication...</div>
               ) : user ? (
                 <DashboardRedirect />

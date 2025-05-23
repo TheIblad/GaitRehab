@@ -31,7 +31,7 @@ function AddPatientModal({ isOpen, onClose, onPatientAdded, therapistId }) {
     setError('');
 
     try {
-      // 1. Create a new user account for the patient
+      // Create patient account
       const userCredential = await createUserWithEmailAndPassword(
         auth, 
         patientData.email, 
@@ -40,12 +40,12 @@ function AddPatientModal({ isOpen, onClose, onPatientAdded, therapistId }) {
       
       const user = userCredential.user;
       
-      // 2. Update the user's display name
+      // Set patient's name
       await updateProfile(user, {
         displayName: patientData.displayName
       });
       
-      // 3. Store patient data in Firestore
+      // Save patient info
       await setDoc(doc(db, 'users', user.uid), {
         uid: user.uid,
         displayName: patientData.displayName,
@@ -59,13 +59,12 @@ function AddPatientModal({ isOpen, onClose, onPatientAdded, therapistId }) {
         lastActive: serverTimestamp(),
       });
       
-      // 4. Also add this patient to the therapist's patients list
+      // Add to therapist's patient list
       const therapistRef = doc(db, 'users', therapistId);
       await updateDoc(therapistRef, {
         patients: arrayUnion(user.uid)
       });
       
-      // Success, call the callback
       if (onPatientAdded) {
         onPatientAdded();
       }

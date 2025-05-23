@@ -21,7 +21,7 @@ const TaskAssignModal = ({ isOpen, onClose, patientId, patientName }) => {
   });
 
   useEffect(() => {
-    // Reset form when modal opens or patient changes
+    // Reset form when modal opens
     if (isOpen) {
       setTaskData({
         title: '',
@@ -54,15 +54,15 @@ const TaskAssignModal = ({ isOpen, onClose, patientId, patientName }) => {
     try {
       const newTaskData = {
         ...taskData,
-        patientId: patientId, // Assign to the specific patient
-        patientName: patientName, // Store patient name for easier display
-        therapistId: user.uid, // Assigned by the current therapist
+        patientId: patientId,
+        patientName: patientName,
+        therapistId: user.uid,
         therapistName: user.displayName || 'Therapist',
-        status: 'pending', // Initial status
+        status: 'pending',
         assignedAt: new Date(),
       };
       await addTask(newTaskData);
-      onClose(); // Close modal on success
+      onClose();
     } catch (err) {
       console.error("Error assigning task:", err);
       setError('Failed to assign task. Please try again.');

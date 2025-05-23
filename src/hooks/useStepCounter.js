@@ -1,15 +1,21 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import useAccelerometer from './useAccelerometer'; // Still used for permission & availability
-import { estimateStepLength } from '../utils/sensorUtils';
+import useAccelerometer from './useAccelerometer';
+import { 
+  estimateStepLength, 
+  calculateGaitSymmetry, 
+  calculateCadence,
+  detectStepPeak 
+} from '../utils/sensorUtils';
 
 const useStepCounter = (options = {}) => {
   const {
-    // stepThreshold, stepCooldown, filterCoefficient are no longer directly used for simulation
+    stepThreshold = 12.0,
+    stepCooldown = 300,
     userHeight = 170,
     userGender = 'neutral',
+    filterCoefficient = 0.3,
     onStepDetected = null,
-    enabled = true,
-    // demoMode option is effectively overridden by this new simulation logic
+    enabled = true
   } = options;
 
   // State
@@ -18,143 +24,192 @@ const useStepCounter = (options = {}) => {
   const [cadence, setCadence] = useState(0);
   const [isActive, setIsActive] = useState(false);
   const [sessionStartTime, setSessionStartTime] = useState(null);
-  const [symmetry, setSymmetry] = useState(75); // Initial default symmetry
-  
-  // Refs for simulation and tracking
-  const simulationIntervalRef = useRef(null);
-  const simulationElapsedTimeRef = useRef(0); // in seconds
+  const [symmetry, setSymmetry] = useState(null);
+
+  // Tracking refs
+  const lastStepTime = useRef(0);
+  const peakDetected = useRef(false);
+  const stepIntervals = useRef([]);
+  const stepTimings = useRef([]);
+  const magnitudeHistory = useRef([]);
   const stepLengthMeters = useRef(estimateStepLength(userHeight, userGender));
-  
-  // Accelerometer hook is still used for permissions and sensor availability status
+
+  // Use accelerometer hook
   const {
-    // acceleration data is ignored for simulation
+    acceleration,
     isAvailable,
-    isRunning: accelerometerIsRunning, // Renamed to avoid conflict
+    isRunning,
     error: accelerometerError,
     usingFallback,
     start: startAccelerometer,
     stop: stopAccelerometer
   } = useAccelerometer({
-    // filterCoefficient: options.filterCoefficient, // Pass through if needed by useAccelerometer
-    enabled // Pass the enabled prop to the accelerometer hook
+    filterCoefficient,
+    enabled
   });
-  
-  // Simulation effect
-  useEffect(() => {
-    if (isActive && enabled) {
-      simulationIntervalRef.current = setInterval(() => {
-        simulationElapsedTimeRef.current += 1; // Increment elapsed time by 1 second
 
-        // 1. Simulate Steps
-        const newStepsThisInterval = Math.random() < 0.5 ? 1 : 2;
+  // Step detection algorithm
+  useEffect(() => {
+    if (!isActive || !isRunning) return;
+
+    const now = Date.now();
+    const { magnitude } = acceleration;
+
+    // Store magnitude history for peak detection
+    magnitudeHistory.current.push(magnitude);
+    if (magnitudeHistory.current.length > 10) {
+      magnitudeHistory.current.shift();
+    }
+
+    const timeSinceLastStep = now - lastStepTime.current;
+
+    // Only detect steps if enough time has passed since last step
+    if (timeSinceLastStep > stepCooldown) {
+      const isPeak = detectStepPeak(
+        magnitude,
+        stepThreshold,
+        magnitudeHistory.current,
+        peakDetected.current
+      );
+
+      if (isPeak) {
+        peakDetected.current = true;
+
+        // Process the step
         setSteps(prevSteps => {
-          const updatedSteps = prevSteps + newStepsThisInterval;
+          const newSteps = prevSteps + 1;
           
           // Update distance
-          const newDistance = (updatedSteps * stepLengthMeters.current) / 1000;
+          const newDistance = (newSteps * stepLengthMeters.current) / 1000;
           setDistance(newDistance);
 
+          // Record step timing for symmetry and cadence
+          if (lastStepTime.current > 0) {
+            const interval = timeSinceLastStep;
+            
+            stepIntervals.current.push(interval);
+            if (stepIntervals.current.length > 10) {
+              stepIntervals.current.shift();
+            }
+
+            stepTimings.current.push({
+              timestamp: now,
+              interval
+            });
+            if (stepTimings.current.length > 20) {
+              stepTimings.current.shift();
+            }
+
+            // Update cadence
+            const newCadence = calculateCadence(stepIntervals.current);
+            setCadence(newCadence);
+
+            // Update symmetry (only every few steps for stability)
+            if (newSteps % 2 === 0 && stepTimings.current.length >= 6) {
+              const newSymmetry = calculateGaitSymmetry(stepTimings.current);
+              if (newSymmetry !== null) {
+                setSymmetry(prev => {
+                  // Smooth the symmetry updates
+                  if (prev === null) return newSymmetry;
+                  return Math.round(prev * 0.7 + newSymmetry * 0.3);
+                });
+              }
+            }
+          }
+
+          // Call step detected callback
           if (onStepDetected) {
             onStepDetected({
-              steps: updatedSteps,
-              timestamp: Date.now()
+              steps: newSteps,
+              timestamp: now,
+              magnitude
             });
           }
-          return updatedSteps;
+
+          return newSteps;
         });
 
-        // 2. Simulate Cadence (simple estimation: 60-120 steps/min)
-        setCadence(60 + Math.floor(Math.random() * 61));
-
-        // 3. Simulate Symmetry
-        const elapsedSeconds = simulationElapsedTimeRef.current;
-        if (elapsedSeconds <= 8) {
-          // High symmetry phase
-          setSymmetry(Math.floor(Math.random() * (98 - 85 + 1)) + 85);
-        } else if (elapsedSeconds <= 11) {
-          // Hold symmetry phase (no change)
-        } else {
-          // Decrease symmetry phase
-          setSymmetry(prevSymmetry => {
-            const decreaseAmount = Math.floor(Math.random() * 3) + 1; // Decrease by 1-3 points
-            return Math.max(50, prevSymmetry - decreaseAmount);
-          });
-        }
-      }, 1000); // Update every second
-    } else {
-      if (simulationIntervalRef.current) {
-        clearInterval(simulationIntervalRef.current);
-        simulationIntervalRef.current = null;
+        lastStepTime.current = now;
       }
+    } else if (magnitude < stepThreshold * 0.6) {
+      // Reset peak detection when magnitude drops
+      peakDetected.current = false;
+    }
+  }, [
+    acceleration, 
+    isActive, 
+    isRunning, 
+    stepThreshold, 
+    stepCooldown, 
+    onStepDetected
+  ]);
+
+  const start = useCallback(async () => {
+    if (!isAvailable) {
+      console.log('Sensors not available');
+      return false;
     }
 
-    return () => {
-      if (simulationIntervalRef.current) {
-        clearInterval(simulationIntervalRef.current);
-      }
-    };
-  }, [isActive, enabled, onStepDetected, userHeight, userGender]); // stepLengthMeters.current changes with height/gender
-
-  const start = useCallback(() => {
-    if (!enabled) return;
-    // Request sensor access / start accelerometer if not already running
-    // This ensures permission prompt if needed
-    if (!accelerometerIsRunning && isAvailable) {
-        startAccelerometer();
+    // Start the accelerometer
+    const started = await startAccelerometer();
+    if (!started) {
+      console.log('Failed to start accelerometer');
+      return false;
     }
 
+    // Reset state
     setIsActive(true);
     const now = Date.now();
     setSessionStartTime(now);
     
-    // Reset simulation state
+    // Reset counters and tracking
     setSteps(0);
     setDistance(0);
     setCadence(0);
-    setSymmetry(75); // Start with initial symmetry
-    simulationElapsedTimeRef.current = 0;
+    setSymmetry(null);
+    
+    lastStepTime.current = 0;
+    peakDetected.current = false;
+    stepIntervals.current = [];
+    stepTimings.current = [];
+    magnitudeHistory.current = [];
 
-    // Clear any existing interval before starting a new one (belt and braces)
-    if (simulationIntervalRef.current) {
-        clearInterval(simulationIntervalRef.current);
-    }
+    console.log('Step counter started');
+    return true;
+  }, [isAvailable, startAccelerometer]);
 
-  }, [enabled, startAccelerometer, accelerometerIsRunning, isAvailable]);
-  
   const stop = useCallback(() => {
     setIsActive(false);
-    // stopAccelerometer(); // Optionally stop the physical sensor if desired
-    if (simulationIntervalRef.current) {
-      clearInterval(simulationIntervalRef.current);
-      simulationIntervalRef.current = null;
-    }
-  }, [/*stopAccelerometer*/]);
-  
+    stopAccelerometer();
+    console.log('Step counter stopped');
+  }, [stopAccelerometer]);
+
   const reset = useCallback(() => {
     setSteps(0);
     setDistance(0);
     setCadence(0);
-    setSymmetry(75); // Reset to initial symmetry
-    simulationElapsedTimeRef.current = 0;
+    setSymmetry(null);
+    
+    lastStepTime.current = 0;
+    peakDetected.current = false;
+    stepIntervals.current = [];
+    stepTimings.current = [];
+    magnitudeHistory.current = [];
     
     if (isActive) {
-      const now = Date.now();
-      setSessionStartTime(now);
-       // Interval will continue if isActive is true, and logic will restart due to elapsed time reset
+      setSessionStartTime(Date.now());
     } else {
       setSessionStartTime(null);
-      if (simulationIntervalRef.current) {
-        clearInterval(simulationIntervalRef.current);
-        simulationIntervalRef.current = null;
-      }
     }
+    
+    console.log('Step counter reset');
   }, [isActive]);
-  
+
   const getSessionDuration = useCallback(() => {
     if (!sessionStartTime) return 0;
     return Math.floor((Date.now() - sessionStartTime) / 1000);
   }, [sessionStartTime]);
-  
+
   const getSessionStats = useCallback(() => {
     return {
       steps,
@@ -163,25 +218,26 @@ const useStepCounter = (options = {}) => {
       symmetry,
       duration: getSessionDuration(),
       startTime: sessionStartTime,
-      usingFallback // from useAccelerometer
+      usingFallback
     };
   }, [steps, distance, cadence, symmetry, getSessionDuration, sessionStartTime, usingFallback]);
-  
-  // Update step length if user height or gender changes
+
+  // Update step length when height/gender changes
   useEffect(() => {
     stepLengthMeters.current = estimateStepLength(userHeight, userGender);
   }, [userHeight, userGender]);
-  
+
   return {
     steps,
     distance,
     cadence,
     symmetry,
-    isAvailable, // Sensor availability
-    isActive,    // Simulation active state
-    isRunning: isActive, // Publicly, isRunning means simulation is running
-    error: accelerometerError, // Sensor error
-    usingFallback, // Sensor fallback status
+    isAvailable,
+    isActive,
+    isRunning,
+    error: accelerometerError,
+    usingFallback,
+    acceleration, // Include for debugging
     start,
     stop,
     reset,

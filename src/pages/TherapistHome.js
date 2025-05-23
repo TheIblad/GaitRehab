@@ -3,18 +3,34 @@ import PatientList from "../components/therapist/PatientList";
 import Card from "../components/common/Card";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import { fetchUserData, fetchTherapistPatients } from "../utils/firestoreQueries";
+import { fetchUserData, fetchTherapistPatients, fetchUserActivities, fetchUserAchievements } from "../utils/firestoreQueries";
 import { mockPatients, mockAchievements, mockTodos } from "../mock/mockTherapistData";
+import { collection, query, where, getDocs, orderBy, limit } from "firebase/firestore";
+import { db } from "../firebase/config";
 import "./TherapistHome.css";
+import RecentActivities from "../components/patient/RecentActivities";
 
 function TherapistHome() {
   const { user } = useAuth();
   const [patients, setPatients] = useState([]);
   const [achievements, setAchievements] = useState([]);
   const [todos, setTodos] = useState([]);
+  const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showMock, setShowMock] = useState(false);
+  const [activeTab, setActiveTab] = useState('activities');
   const navigate = useNavigate();
+
+  const formatTimestamp = (timestamp) => {
+    if (!timestamp) return 'N/A';
+    if (timestamp.toDate) {
+      return timestamp.toDate().toLocaleDateString();
+    }
+    if (timestamp instanceof Date) {
+      return timestamp.toLocaleDateString();
+    }
+    return new Date(timestamp).toLocaleDateString();
+  };
 
   // Function to load all therapist data
   const loadData = async () => {
@@ -25,6 +41,7 @@ function TherapistHome() {
       setPatients(mockPatients);
       setAchievements(mockAchievements);
       setTodos(mockTodos);
+      setActivities(mockPatients.flatMap(patient => patient.activities || []));
       setLoading(false);
       return;
     }
@@ -45,9 +62,43 @@ function TherapistHome() {
           }));
 
           setPatients(processedPatients);
-          // In a real app, you would fetch real achievements and todos
-          setAchievements([]);
-          setTodos([]);
+
+          // Fetch activities from all patients
+          const allActivities = [];
+          for (const patient of processedPatients) {
+            const patientActivities = await fetchUserActivities(patient.id);
+            allActivities.push(...patientActivities.map(activity => ({
+              ...activity,
+              patientName: patient.displayName || patient.name,
+              timestamp: activity.timestamp?.toDate?.() || new Date(activity.timestamp)
+            })));
+          }
+          
+          // Sort activities by timestamp and take most recent
+          const recentActivities = allActivities
+            .sort((a, b) => b.timestamp - a.timestamp)
+            .slice(0, 10);
+
+          setActivities(recentActivities);
+
+          // Fetch achievements from all patients
+          const allAchievements = [];
+          for (const patient of processedPatients) {
+            const patientAchievements = await fetchUserAchievements(patient.id);
+            allAchievements.push(...patientAchievements.map(achievement => ({
+              ...achievement,
+              patientName: patient.displayName || patient.name,
+              earnedAt: achievement.earnedAt?.toDate?.() || new Date(achievement.earnedAt)
+            })));
+          }
+          
+          // Sort achievements by earnedAt and take most recent
+          const recentAchievements = allAchievements
+            .sort((a, b) => b.earnedAt - a.earnedAt)
+            .slice(0, 10);
+
+          setAchievements(recentAchievements);
+          setTodos([]); // TODO: Implement real todos
         }
       } catch (error) {
         console.error("Error loading therapist data:", error);
@@ -123,21 +174,27 @@ function TherapistHome() {
             {achievements.length > 0 ? (
               <ul className="achievements-list">
                 {achievements.map((achievement) => (
-                  <li key={achievement.id}>
-                    <span className="achievement-patient">{achievement.patientName}</span>
-                    <span className="achievement-badge">{achievement.badgeIcon}</span>
-                    <span className="achievement-text">
-                      {achievement.badgeName} - {' '}
-                      {achievement.earnedAt instanceof Date 
-                        ? achievement.earnedAt.toLocaleDateString() 
-                        : new Date().toLocaleDateString()}
-                    </span>
+                  <li key={achievement.id} className="achievement-item">
+                    <div className="achievement-header">
+                      <span className="achievement-patient">{achievement.patientName}</span>
+                      <span className="achievement-date">
+                        {formatTimestamp(achievement.earnedAt)}
+                      </span>
+                    </div>
+                    <div className="achievement-content">
+                      <span className="achievement-badge">{achievement.badgeIcon}</span>
+                      <span className="achievement-text">{achievement.badgeName}</span>
+                    </div>
                   </li>
                 ))}
               </ul>
             ) : (
               <p className="empty-state">No recent achievements found.</p>
             )}
+          </Card>
+
+          <Card className="dashboard-card" title="Recent Activities">
+            <RecentActivities activities={activities} loading={loading} showMock={showMock} />
           </Card>
 
           <Card className="dashboard-card" title="To-Do List">
@@ -167,6 +224,12 @@ function TherapistHome() {
             )}
           </Card>
         </div>
+      )}
+
+      {activeTab === 'activities' && (
+        <Card title="Activity Log" className="full-width-card">
+          <RecentActivities activities={activities} loading={loading} showMock={showMock} />
+        </Card>
       )}
     </div>
   );
