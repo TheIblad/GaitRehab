@@ -194,7 +194,7 @@ function AppContent() {
       navigate('/');
     } catch (error) {
       console.error('Error signing out:', error);
-      window.location.href = '/';
+      window.location.href = '/GaitRehab/';
     }
   };
 
@@ -347,7 +347,7 @@ function AppContent() {
 function App() {
   return (
     <AuthProvider> {/* AuthProvider wraps Router */}
-      <Router> {/* Router now wraps AppContent */}
+      <Router basename="/GaitRehab"> {/* Router now wraps AppContent */}
         <AppContent />
       </Router>
     </AuthProvider>
