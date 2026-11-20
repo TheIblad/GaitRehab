@@ -33,6 +33,8 @@ jobs:
         run: npm ci
 
       - name: Build
+        env:
+          CI: false
         run: npm run build
 
       - name: Setup Pages
