@@ -1,11 +1,10 @@
 /* Hero Section */
 .hero {
-  background: url('https://via.placeholder.com/1500') no-repeat center center/cover;
+  background: linear-gradient(135deg, #1e3a8a 0%, #0284c7 100%);
   padding: 100px 20px;
   color: #fff;
   text-align: center;
 }
-
 .hero h1 {
   font-size: 3rem;
   margin-bottom: 20px;
